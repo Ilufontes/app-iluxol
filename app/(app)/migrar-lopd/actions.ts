@@ -22,9 +22,9 @@ export async function subirDocumentoLopdMasivo(clienteId: number, nombreOriginal
     .from('clientes-documentos')
     .upload(ruta, archivo)
 
-  if (errorSubida) throw new Error('No se pudo subir: ' + errorSubida.message)
+  if (errorSubida) throw new Error('No se pudo subir el archivo: ' + errorSubida.message)
 
-  const { error: errorInsert } = await supabase
+  const { data: insertado, error: errorInsert } = await supabase
     .from('clientes_documentos')
     .insert({
       cliente_id: clienteId,
@@ -32,8 +32,18 @@ export async function subirDocumentoLopdMasivo(clienteId: number, nombreOriginal
       ruta_storage: ruta,
       tipo: 'LOPD',
     })
+    .select('id')
+    .single()
 
-  if (errorInsert) throw new Error('No se pudo registrar en la base de datos: ' + errorInsert.message)
+  if (errorInsert || !insertado) {
+    // El archivo ya se subió a Storage pero el registro en la base de datos no se
+    // pudo confirmar (a veces RLS descarta la fila sin devolver un error explícito).
+    // Lo borramos del Storage para no dejar un archivo huérfano sin referencia.
+    await supabase.storage.from('clientes-documentos').remove([ruta])
+    throw new Error(
+      errorInsert?.message ?? 'El documento no se pudo registrar en la base de datos (posible bloqueo de permisos).'
+    )
+  }
 
   await supabase.from('clientes').update({ lpd_firmado: true }).eq('id', clienteId)
 
