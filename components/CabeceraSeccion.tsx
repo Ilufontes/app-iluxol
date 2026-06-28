@@ -20,25 +20,28 @@ export default function CabeceraSeccion({
   color,
   titulo,
   subtitulo,
+  extra,
   accion,
 }: {
   color: ColorSeccion
   titulo: string
   subtitulo?: string
+  extra?: React.ReactNode
   accion?: React.ReactNode
 }) {
   const p = PALETA[color]
   return (
     <div style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      marginBottom: 20, padding: '16px 22px', borderRadius: 12,
+      marginBottom: 20, padding: '16px 22px', borderRadius: 12, gap: 16,
       background: p.fondo, border: `1px solid ${p.borde}`,
     }}>
-      <div>
+      <div style={{ flexShrink: 0 }}>
         <h1 style={{ fontSize: 18, fontWeight: 500, margin: 0, color: p.titulo }}>{titulo}</h1>
-        {subtitulo && <p style={{ fontSize: 12, margin: '2px 0 0', color: p.subtitulo }}>{subtitulo}</p>}
+        {subtitulo && <p style={{ fontSize: 12, margin: '2px 0 0', color: p.subtitulo, whiteSpace: 'nowrap' }}>{subtitulo}</p>}
       </div>
-      {accion}
+      {extra && <div style={{ flex: 1, maxWidth: 320 }}>{extra}</div>}
+      {accion && <div style={{ flexShrink: 0 }}>{accion}</div>}
     </div>
   )
 }
