@@ -162,3 +162,66 @@ export async function borrarFotoDomicilio(fotoId: number, rutaStorage: string) {
 
   revalidatePath('/clientes')
 }
+
+export async function listarDocumentosCliente(clienteId: number) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('clientes_documentos')
+    .select('id, nombre_archivo, ruta_storage, tipo, subido_en')
+    .eq('cliente_id', clienteId)
+    .order('subido_en', { ascending: false })
+
+  if (error) return []
+
+  const conUrl = await Promise.all(
+    data.map(async (doc) => {
+      const { data: firmada } = await supabase.storage
+        .from('clientes-documentos')
+        .createSignedUrl(doc.ruta_storage, 3600)
+      return { ...doc, url: firmada?.signedUrl ?? null }
+    })
+  )
+  return conUrl
+}
+
+export async function subirDocumentoCliente(clienteId: number, formData: FormData) {
+  const archivo = formData.get('archivo') as File | null
+  if (!archivo) throw new Error('No se recibió ningún archivo.')
+
+  const supabase = await createClient()
+  const extension = archivo.name.split('.').pop() || 'pdf'
+  const ruta = `cliente-${clienteId}/${Date.now()}.${extension}`
+
+  const { error: errorSubida } = await supabase.storage
+    .from('clientes-documentos')
+    .upload(ruta, archivo)
+
+  if (errorSubida) throw new Error('No se pudo subir el documento.')
+
+  const { error: errorInsert } = await supabase
+    .from('clientes_documentos')
+    .insert({
+      cliente_id: clienteId,
+      nombre_archivo: archivo.name,
+      ruta_storage: ruta,
+      tipo: 'LOPD',
+    })
+
+  if (errorInsert) throw new Error('No se pudo registrar el documento.')
+
+  // Subir el LOPD firmado implica que ya está firmado: lo marcamos automáticamente.
+  await supabase.from('clientes').update({ lpd_firmado: true }).eq('id', clienteId)
+
+  revalidatePath('/clientes')
+}
+
+export async function borrarDocumentoCliente(documentoId: number, rutaStorage: string) {
+  const supabase = await createClient()
+
+  await supabase.storage.from('clientes-documentos').remove([rutaStorage])
+
+  const { error } = await supabase.from('clientes_documentos').delete().eq('id', documentoId)
+  if (error) throw new Error('No se pudo borrar el documento.')
+
+  revalidatePath('/clientes')
+}
