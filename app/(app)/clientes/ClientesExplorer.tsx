@@ -14,6 +14,7 @@ import {
   listarDocumentosCliente,
   subirDocumentoCliente,
   borrarDocumentoCliente,
+  obtenerClientePorId,
 } from './actions'
 import CabeceraSeccion from '@/components/CabeceraSeccion'
 import Paginacion from '@/components/Paginacion'
@@ -86,6 +87,30 @@ export default function ClientesExplorer({
     return () => clearTimeout(temporizador)
   }, [busqueda])
 
+  // Si se llega con ?cliente=ID (por ejemplo desde "Ver cliente" en una nota),
+  // se abre directamente su ficha de edición, sin que el usuario tenga que buscarlo.
+  useEffect(() => {
+    const idParam = searchParams.get('cliente')
+    if (!idParam) return
+    const id = Number(idParam)
+    if (!Number.isInteger(id)) return
+
+    const yaEnLista = clientes.find((c) => c.id === id)
+    if (yaEnLista) {
+      abrirEdicion(yaEnLista)
+      return
+    }
+    obtenerClientePorId(id).then((c: any) => {
+      if (!c) return
+      const normalizado: Cliente = {
+        ...c,
+        domicilios: (c.domicilios ?? []).map((d: any) => ({ ...d, municipios: unoOnulo(d.municipios) })),
+      }
+      abrirEdicion(normalizado)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const enBusqueda = busqueda.trim().length > 0
   const listaVisible = enBusqueda ? (resultadosBusqueda ?? []) : clientes
 
@@ -138,7 +163,7 @@ export default function ClientesExplorer({
           </div>
         )}
         {listaVisible.map((c) => (
-          <TarjetaCliente key={c.id} cliente={c} onEditar={() => abrirEdicion(c)} />
+          <TarjetaCliente key={c.id} cliente={c} onAbrir={() => abrirEdicion(c)} />
         ))}
       </div>
 
@@ -158,7 +183,7 @@ export default function ClientesExplorer({
   )
 }
 
-function TarjetaCliente({ cliente, onEditar }: { cliente: Cliente; onEditar: () => void }) {
+function TarjetaCliente({ cliente, onAbrir }: { cliente: Cliente; onAbrir: () => void }) {
   const iniciales = cliente.nombre
     .trim()
     .split(/\s+/)
@@ -168,7 +193,10 @@ function TarjetaCliente({ cliente, onEditar }: { cliente: Cliente; onEditar: () 
     .toUpperCase()
 
   return (
-    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '1rem 1.25rem' }}>
+    <div
+      onClick={onAbrir}
+      style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '1rem 1.25rem', cursor: 'pointer' }}
+    >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{
@@ -193,7 +221,13 @@ function TarjetaCliente({ cliente, onEditar }: { cliente: Cliente; onEditar: () 
             </div>
           </div>
         </div>
-        <button onClick={onEditar} style={botonSecundario}>Editar</button>
+        <a
+          href={`/notas?cliente=${cliente.id}`}
+          onClick={(e) => e.stopPropagation()}
+          style={{ ...botonSecundario, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}
+        >
+          Ver Notas Asignadas
+        </a>
       </div>
 
       <div style={{
@@ -241,7 +275,9 @@ function ModalCliente({
   const [dni, setDni] = useState(cliente?.dni ?? '')
   const [lpd, setLpd] = useState(cliente?.lpd_firmado ?? false)
   const [domicilios, setDomicilios] = useState<Domicilio[]>(cliente?.domicilios ?? [])
-  const [domicilioSeleccionadoId, setDomicilioSeleccionadoId] = useState<number | null>(null)
+  const [domicilioSeleccionadoId, setDomicilioSeleccionadoId] = useState<number | null>(
+    cliente?.domicilios.length === 1 ? cliente.domicilios[0].id : null
+  )
   const [creandoDomicilioNuevo, setCreandoDomicilioNuevo] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
