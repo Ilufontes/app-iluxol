@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
   buscarClientes,
   crearClienteRapido,
@@ -70,6 +71,39 @@ export default function NotasExplorer({
   const [modalAbierto, setModalAbierto] = useState(false)
   const [notaEditando, setNotaEditando] = useState<NotaListado | null>(null)
   const [notaDetalle, setNotaDetalle] = useState<NotaListado | null>(null)
+
+  const searchParams = useSearchParams()
+
+  // Si se llega con ?nota=NUMERO (por ejemplo desde "Volver a la nota" en Clientes),
+  // se abre directamente su panel de detalle, sin que haya que buscarla a mano.
+  useEffect(() => {
+    const numeroParam = searchParams.get('nota')
+    if (!numeroParam) return
+    const numero = Number(numeroParam)
+    if (!Number.isInteger(numero) || numero <= 0) return
+
+    const yaEnLista = notas.find((n) => n.numero_nota === numero)
+    if (yaEnLista) {
+      setNotaDetalle(yaEnLista)
+      return
+    }
+    buscarNotaPorNumero(numero).then((r: any) => {
+      if (!r) return
+      const normalizada: NotaListado = {
+        ...r,
+        clientes: unoOnulo(r.clientes),
+        tipo_notas: unoOnulo(r.tipo_notas),
+        asignados: unoOnulo(r.asignados),
+        llevar_opciones: unoOnulo(r.llevar_opciones),
+        domicilios: (() => {
+          const d = unoOnulo(r.domicilios)
+          return d ? { ...d, municipios: unoOnulo(d.municipios) } : null
+        })(),
+      }
+      setNotaDetalle(normalizada)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const [busquedaNumero, setBusquedaNumero] = useState('')
   const [resultadoBusqueda, setResultadoBusqueda] = useState<NotaListado[] | null>(null)
@@ -152,7 +186,19 @@ export default function NotasExplorer({
             : `${totalNotas} notas registradas — página ${paginaActual} de ${totalPaginas}`
         }
         extra={
-          filtroClienteNombre || filtroFecha ? (
+          filtroClienteNombre ? (
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <a
+                href={`/clientes?buscar=${encodeURIComponent(filtroClienteNombre)}`}
+                style={{ fontSize: 12, color: '#2230B8', textDecoration: 'underline' }}
+              >
+                ← Volver al cliente
+              </a>
+              <a href="/notas" style={{ fontSize: 12, color: '#2230B8', textDecoration: 'underline' }}>
+                Quitar filtro y ver todas
+              </a>
+            </div>
+          ) : filtroFecha ? (
             <a href="/notas" style={{ fontSize: 12, color: '#2230B8', textDecoration: 'underline' }}>
               Quitar filtro y ver todas
             </a>
