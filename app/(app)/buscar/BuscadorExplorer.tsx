@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { buscarGlobal, type ResultadoBusqueda } from './actions'
+import CabeceraSeccion from '@/components/CabeceraSeccion'
 
 export default function BuscadorExplorer() {
   const [termino, setTermino] = useState('')
@@ -30,10 +31,11 @@ export default function BuscadorExplorer() {
 
   return (
     <div>
-      <h1 style={{ fontSize: 22, fontWeight: 500, margin: '0 0 4px', color: '#1c2230' }}>Buscador</h1>
-      <p style={{ fontSize: 14, color: '#6b7280', margin: '0 0 20px' }}>
-        Busca por nombre, teléfono, email o dirección.
-      </p>
+      <CabeceraSeccion
+        color="morado"
+        titulo="Buscador"
+        subtitulo="Busca por nombre, teléfono, email o dirección"
+      />
 
       <input
         autoFocus
@@ -41,7 +43,7 @@ export default function BuscadorExplorer() {
         onChange={(e) => manejarCambio(e.target.value)}
         placeholder="Escribe para buscar, ej: domingo"
         style={{
-          width: '100%', height: 40, borderRadius: 8, border: '1px solid #d1d5db',
+          width: '100%', height: 40, borderRadius: 8, border: '1px solid #d9d6fa',
           padding: '0 14px', fontSize: 15, boxSizing: 'border-box', marginBottom: 16,
         }}
       />
