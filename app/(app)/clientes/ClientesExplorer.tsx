@@ -11,6 +11,7 @@ import {
   subirFotoDomicilio,
   borrarFotoDomicilio,
 } from './actions'
+import CabeceraSeccion from '@/components/CabeceraSeccion'
 
 type Domicilio = {
   id: number
@@ -88,17 +89,12 @@ export default function ClientesExplorer({
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 500, margin: 0, color: '#1c2230' }}>Clientes</h1>
-          <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>
-            {clientes.length} clientes en total{busqueda ? ` · ${filtrados.length} coinciden` : ''}
-          </p>
-        </div>
-        <button onClick={abrirNuevo} style={botonPrimario}>
-          + Nuevo cliente
-        </button>
-      </div>
+      <CabeceraSeccion
+        color="verde"
+        titulo="Clientes"
+        subtitulo={`${clientes.length} clientes en total${busqueda ? ` · ${filtrados.length} coinciden` : ''}`}
+        accion={<button onClick={abrirNuevo} style={botonPrimario}>+ Nuevo cliente</button>}
+      />
 
       <input
         type="text"
@@ -274,25 +270,30 @@ function ModalCliente({
     <div style={overlayStyle}>
       <div style={modalStylePartido}>
         {/* Columna izquierda: datos del cliente */}
-        <div style={{ flex: '1 1 360px', minWidth: 320, padding: '1.5rem', overflowY: 'auto', borderRight: '1px solid #e5e7eb' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 500 }}>
-              {clienteIdActual ? 'Editar cliente' : 'Nuevo cliente'}
-            </h2>
-            <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ flex: '1 1 360px', minWidth: 320, display: 'flex', flexDirection: 'column', borderRight: '1px solid #e5e7eb' }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #1D9E75 0%, #0F6E56 100%)',
+            padding: '18px 1.5rem', position: 'relative', flexShrink: 0,
+          }}>
+            <div style={{ display: 'flex', gap: 8, position: 'absolute', top: 12, right: 14 }}>
               {clienteIdActual && (
                 <a
                   href={`/clientes-lopd/${clienteIdActual}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ ...botonSecundario, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}
+                  style={{ height: 26, padding: '0 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 12, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}
                 >
                   LOPD
                 </a>
               )}
-              <button onClick={onCerrar} style={botonCerrar}>×</button>
+              <button onClick={onCerrar} style={{ ...botonCerrar, color: '#fff', background: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>×</button>
             </div>
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 500, color: '#fff' }}>
+              {clienteIdActual ? 'Editar cliente' : 'Nuevo cliente'}
+            </h2>
           </div>
+
+          <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <Campo etiqueta="Nombre">
@@ -363,8 +364,9 @@ function ModalCliente({
           </div>
 
           {error && <p style={{ color: '#b42318', fontSize: 13, marginTop: 12 }}>{error}</p>}
+          </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20, borderTop: '1px solid #e5e7eb', paddingTop: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '16px 1.5rem', borderTop: '1px solid #e5e7eb', flexShrink: 0 }}>
             <button onClick={onCerrar} style={botonSecundario}>Cerrar</button>
             <button onClick={handleGuardarCliente} disabled={guardando} style={botonPrimario}>
               {guardando ? 'Guardando...' : 'Guardar cliente'}
@@ -373,7 +375,16 @@ function ModalCliente({
         </div>
 
         {/* Columna derecha: domicilio seleccionado, editable */}
-        <div style={{ flex: '1 1 360px', minWidth: 320, padding: '1.5rem', overflowY: 'auto', background: '#fafafa' }}>
+        <div style={{ flex: '1 1 360px', minWidth: 320, display: 'flex', flexDirection: 'column', background: '#fafafa' }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #BA7517 0%, #854F0B 100%)',
+            padding: '18px 1.5rem', flexShrink: 0,
+          }}>
+            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 500, color: '#fff' }}>
+              {creandoDomicilioNuevo ? 'Nuevo domicilio' : domicilioSeleccionado ? 'Editar domicilio' : 'Domicilio'}
+            </h2>
+          </div>
+          <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
           {creandoDomicilioNuevo && clienteIdActual && (
             <PanelDomicilioNuevo
               clienteId={clienteIdActual}
@@ -396,6 +407,7 @@ function ModalCliente({
               Selecciona un domicilio de la lista para ver y editar sus datos,<br />o añade uno nuevo.
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>
@@ -449,7 +461,6 @@ function PanelDomicilioNuevo({
 
   return (
     <div>
-      <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 500 }}>Nuevo domicilio</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <Campo etiqueta="Dirección">
           <input value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder="Calle, número, piso..." style={inputBase} />
@@ -476,7 +487,7 @@ function PanelDomicilioNuevo({
       {error && <p style={{ color: '#b42318', fontSize: 13, marginTop: 10 }}>{error}</p>}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
         <button onClick={onCancelar} style={botonSecundario}>Cancelar</button>
-        <button onClick={handleGuardar} disabled={guardando} style={botonPrimario}>
+        <button onClick={handleGuardar} disabled={guardando} style={botonNaranja}>
           {guardando ? 'Guardando...' : 'Guardar domicilio'}
         </button>
       </div>
@@ -532,7 +543,6 @@ function PanelDomicilioEdicion({
 
   return (
     <div>
-      <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 500 }}>Editar domicilio</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <Campo etiqueta="Dirección">
           <input value={direccion} onChange={(e) => setDireccion(e.target.value)} style={inputBase} />
@@ -561,7 +571,7 @@ function PanelDomicilioEdicion({
       {guardadoOk && <p style={{ color: '#16a34a', fontSize: 13, marginTop: 10 }}>Guardado.</p>}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16, marginBottom: 20 }}>
-        <button onClick={handleGuardar} disabled={guardando} style={botonPrimario}>
+        <button onClick={handleGuardar} disabled={guardando} style={botonNaranja}>
           {guardando ? 'Guardando...' : 'Guardar cambios'}
         </button>
       </div>
@@ -682,7 +692,10 @@ const inputBase: React.CSSProperties = {
   width: '100%', height: 36, borderRadius: 8, border: '1px solid #d1d5db', padding: '0 10px', fontSize: 13, boxSizing: 'border-box',
 }
 const botonPrimario: React.CSSProperties = {
-  height: 36, padding: '0 16px', borderRadius: 8, border: 'none', background: '#2563eb', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+  height: 36, padding: '0 16px', borderRadius: 8, border: 'none', background: '#1D9E75', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+}
+const botonNaranja: React.CSSProperties = {
+  height: 36, padding: '0 16px', borderRadius: 8, border: 'none', background: '#BA7517', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
 }
 const botonSecundario: React.CSSProperties = {
   height: 30, padding: '0 12px', borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', fontSize: 12, cursor: 'pointer',
