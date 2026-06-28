@@ -6,8 +6,26 @@ export type ClienteParaMatch = { id: number; nombre: string }
 
 export async function cargarClientesParaMatch(): Promise<ClienteParaMatch[]> {
   const supabase = await createClient()
-  const { data } = await supabase.from('clientes').select('id, nombre')
-  return data ?? []
+
+  // Supabase limita a 1000 filas por defecto si no se especifica un rango.
+  // Con más de 1700 clientes, hay que paginar explícitamente para traerlos todos.
+  const PAGINA = 1000
+  let desde = 0
+  let todos: ClienteParaMatch[] = []
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('clientes')
+      .select('id, nombre')
+      .range(desde, desde + PAGINA - 1)
+
+    if (error || !data || data.length === 0) break
+    todos = todos.concat(data)
+    if (data.length < PAGINA) break
+    desde += PAGINA
+  }
+
+  return todos
 }
 
 export async function subirDocumentoLopdMasivo(clienteId: number, nombreOriginal: string, formData: FormData) {
