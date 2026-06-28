@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import {
   crearCliente,
@@ -10,8 +10,10 @@ import {
   listarFotosDomicilio,
   subirFotoDomicilio,
   borrarFotoDomicilio,
+  buscarClientesGlobal,
 } from './actions'
 import CabeceraSeccion from '@/components/CabeceraSeccion'
+import Paginacion from '@/components/Paginacion'
 
 type Domicilio = {
   id: number
@@ -43,33 +45,46 @@ function unoOnulo(valor: any) {
 export default function ClientesExplorer({
   clientesIniciales,
   municipios,
+  paginaActual,
+  totalPaginas,
+  totalClientes,
 }: {
   clientesIniciales: Cliente[]
   municipios: Municipio[]
+  paginaActual: number
+  totalPaginas: number
+  totalClientes: number
 }) {
   const searchParams = useSearchParams()
   const [clientes, setClientes] = useState<Cliente[]>(clientesIniciales)
   const [busqueda, setBusqueda] = useState(searchParams.get('buscar') ?? '')
+  const [resultadosBusqueda, setResultadosBusqueda] = useState<Cliente[] | null>(null)
+  const [buscando, setBuscando] = useState(false)
   const [modalAbierto, setModalAbierto] = useState(false)
   const [clienteEditando, setClienteEditando] = useState<Cliente | null>(null)
 
-  const filtrados = useMemo(() => {
-    const t = busqueda.trim().toLowerCase()
-    if (!t) return clientes
-    return clientes.filter((c) => {
-      const campos = [
-        c.nombre,
-        c.telefono,
-        c.telefono2,
-        c.email,
-        c.dni,
-        ...c.domicilios.map((d) => `${d.direccion} ${d.municipios?.nombre ?? ''}`),
-      ]
-        .join(' ')
-        .toLowerCase()
-      return campos.includes(t)
-    })
-  }, [clientes, busqueda])
+  useEffect(() => {
+    const t = busqueda.trim()
+    if (!t) {
+      setResultadosBusqueda(null)
+      setBuscando(false)
+      return
+    }
+    setBuscando(true)
+    const temporizador = setTimeout(async () => {
+      const r: any[] = await buscarClientesGlobal(t)
+      const normalizados: Cliente[] = r.map((c) => ({
+        ...c,
+        domicilios: (c.domicilios ?? []).map((d: any) => ({ ...d, municipios: unoOnulo(d.municipios) })),
+      }))
+      setResultadosBusqueda(normalizados)
+      setBuscando(false)
+    }, 350)
+    return () => clearTimeout(temporizador)
+  }, [busqueda])
+
+  const enBusqueda = busqueda.trim().length > 0
+  const listaVisible = enBusqueda ? (resultadosBusqueda ?? []) : clientes
 
   function abrirNuevo() {
     setClienteEditando(null)
@@ -82,9 +97,14 @@ export default function ClientesExplorer({
   }
 
   function alGuardarCliente(cliente: Cliente, esNuevo: boolean) {
-    setClientes((prev) =>
-      esNuevo ? [cliente, ...prev] : prev.map((c) => (c.id === cliente.id ? cliente : c))
-    )
+    if (esNuevo) {
+      if (!enBusqueda && paginaActual === 1) {
+        setClientes((prev) => [cliente, ...prev].slice(0, 40))
+      }
+    } else {
+      setClientes((prev) => prev.map((c) => (c.id === cliente.id ? cliente : c)))
+      setResultadosBusqueda((prev) => prev && prev.map((c) => (c.id === cliente.id ? cliente : c)))
+    }
   }
 
   return (
@@ -92,7 +112,11 @@ export default function ClientesExplorer({
       <CabeceraSeccion
         color="verde"
         titulo="Clientes"
-        subtitulo={`${clientes.length} clientes en total${busqueda ? ` · ${filtrados.length} coinciden` : ''}`}
+        subtitulo={
+          enBusqueda
+            ? buscando ? 'Buscando...' : `${listaVisible.length} resultados para "${busqueda}"`
+            : `${totalClientes} clientes en total — página ${paginaActual} de ${totalPaginas}`
+        }
         accion={<button onClick={abrirNuevo} style={botonPrimario}>+ Nuevo cliente</button>}
       />
 
@@ -105,15 +129,19 @@ export default function ClientesExplorer({
       />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {filtrados.length === 0 && (
+        {listaVisible.length === 0 && !buscando && (
           <div style={{ padding: '2rem', textAlign: 'center', color: '#9ca3af', fontSize: 14, border: '1px solid #e5e7eb', borderRadius: 12, background: '#fff' }}>
-            No se encontraron clientes con ese criterio.
+            {enBusqueda ? 'No se encontraron clientes con ese criterio.' : 'Todavía no hay clientes registrados.'}
           </div>
         )}
-        {filtrados.map((c) => (
+        {listaVisible.map((c) => (
           <TarjetaCliente key={c.id} cliente={c} onEditar={() => abrirEdicion(c)} />
         ))}
       </div>
+
+      {!enBusqueda && (
+        <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} baseHref="/clientes" color="#1D9E75" />
+      )}
 
       {modalAbierto && (
         <ModalCliente
