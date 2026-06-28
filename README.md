@@ -70,7 +70,7 @@ y deberías ver el menú con Notas, Clientes y Ajustes.
 
 ---
 
-## Notas importantes
+## Notas importantes chacho
 
 - **Fotos de domicilio y documentos**: el esquema crea automáticamente los buckets de Storage
   necesarios (`domicilios-fotos`, `clientes-documentos`) la primera vez que ejecutas `schema.sql`.
