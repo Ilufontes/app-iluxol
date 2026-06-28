@@ -65,6 +65,7 @@ export default function ClientesExplorer({
   const [buscando, setBuscando] = useState(false)
   const [modalAbierto, setModalAbierto] = useState(false)
   const [clienteEditando, setClienteEditando] = useState<Cliente | null>(null)
+  const notaOrigen = searchParams.get('nota')
 
   useEffect(() => {
     const t = busqueda.trim()
@@ -119,6 +120,21 @@ export default function ClientesExplorer({
           enBusqueda
             ? buscando ? 'Buscando...' : `${listaVisible.length} resultados para "${busqueda}"`
             : `${totalClientes} clientes en total — página ${paginaActual} de ${totalPaginas}`
+        }
+        extra={
+          notaOrigen ? (
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <a
+                href={`/notas?nota=${notaOrigen}`}
+                style={{ fontSize: 12, color: '#0F6E56', textDecoration: 'underline' }}
+              >
+                ← Volver a la nota
+              </a>
+              <a href="/clientes" style={{ fontSize: 12, color: '#0F6E56', textDecoration: 'underline' }}>
+                Quitar filtro y ver todos
+              </a>
+            </div>
+          ) : undefined
         }
         accion={<button onClick={abrirNuevo} style={botonPrimario}>+ Nuevo cliente</button>}
       />
