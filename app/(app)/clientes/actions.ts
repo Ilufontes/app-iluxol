@@ -198,7 +198,7 @@ export async function subirDocumentoCliente(clienteId: number, formData: FormDat
 
   if (errorSubida) throw new Error('No se pudo subir el documento.')
 
-  const { error: errorInsert } = await supabase
+  const { data: insertado, error: errorInsert } = await supabase
     .from('clientes_documentos')
     .insert({
       cliente_id: clienteId,
@@ -206,8 +206,13 @@ export async function subirDocumentoCliente(clienteId: number, formData: FormDat
       ruta_storage: ruta,
       tipo: 'LOPD',
     })
+    .select('id')
+    .single()
 
-  if (errorInsert) throw new Error('No se pudo registrar el documento.')
+  if (errorInsert || !insertado) {
+    await supabase.storage.from('clientes-documentos').remove([ruta])
+    throw new Error('No se pudo registrar el documento (posible bloqueo de permisos).')
+  }
 
   // Subir el LOPD firmado implica que ya está firmado: lo marcamos automáticamente.
   await supabase.from('clientes').update({ lpd_firmado: true }).eq('id', clienteId)
