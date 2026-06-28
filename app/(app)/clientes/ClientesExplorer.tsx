@@ -195,7 +195,7 @@ function TarjetaCliente({ cliente, onAbrir }: { cliente: Cliente; onAbrir: () =>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{
-            width: 40, height: 40, borderRadius: '50%', background: '#e6f1fb', color: '#0c447c',
+            width: 40, height: 40, borderRadius: '50%', background: '#E9F5EF', color: '#0F6E56',
             display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 500, flexShrink: 0,
           }}>
             {iniciales}
