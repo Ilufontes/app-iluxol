@@ -3,6 +3,26 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
+export async function buscarNotaPorNumero(numero: number) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('notas')
+    .select(`
+      id, numero_nota, fecha_entrada, observaciones, dia_cita, hora_cita,
+      cliente_id, domicilio_id, tipo_nota_id, asignado_id, llevar_id,
+      clientes ( id, nombre, telefono, telefono2, email ),
+      domicilios ( id, direccion, zona, municipio_id, municipios ( nombre ) ),
+      tipo_notas ( nombre ),
+      asignados ( nombre ),
+      llevar_opciones ( nombre )
+    `)
+    .eq('numero_nota', numero)
+    .maybeSingle()
+
+  if (error) return null
+  return data
+}
+
 export async function buscarClientes(termino: string) {
   const supabase = await createClient()
   const t = termino.trim()
