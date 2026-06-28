@@ -14,7 +14,6 @@ import {
   listarDocumentosCliente,
   subirDocumentoCliente,
   borrarDocumentoCliente,
-  obtenerClientePorId,
 } from './actions'
 import CabeceraSeccion from '@/components/CabeceraSeccion'
 import Paginacion from '@/components/Paginacion'
@@ -86,30 +85,6 @@ export default function ClientesExplorer({
     }, 350)
     return () => clearTimeout(temporizador)
   }, [busqueda])
-
-  // Si se llega con ?cliente=ID (por ejemplo desde "Ver cliente" en una nota),
-  // se abre directamente su ficha de edición, sin que el usuario tenga que buscarlo.
-  useEffect(() => {
-    const idParam = searchParams.get('cliente')
-    if (!idParam) return
-    const id = Number(idParam)
-    if (!Number.isInteger(id)) return
-
-    const yaEnLista = clientes.find((c) => c.id === id)
-    if (yaEnLista) {
-      abrirEdicion(yaEnLista)
-      return
-    }
-    obtenerClientePorId(id).then((c: any) => {
-      if (!c) return
-      const normalizado: Cliente = {
-        ...c,
-        domicilios: (c.domicilios ?? []).map((d: any) => ({ ...d, municipios: unoOnulo(d.municipios) })),
-      }
-      abrirEdicion(normalizado)
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   const enBusqueda = busqueda.trim().length > 0
   const listaVisible = enBusqueda ? (resultadosBusqueda ?? []) : clientes
