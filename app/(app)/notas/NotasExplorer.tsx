@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   buscarClientes,
   crearClienteRapido,
   crearDomicilioRapido,
   crearNota,
   actualizarNota,
+  buscarNotaPorNumero,
 } from './actions'
 import CabeceraSeccion from '@/components/CabeceraSeccion'
 import Paginacion from '@/components/Paginacion'
@@ -66,6 +67,50 @@ export default function NotasExplorer({
   const [notaEditando, setNotaEditando] = useState<NotaListado | null>(null)
   const [notaDetalle, setNotaDetalle] = useState<NotaListado | null>(null)
 
+  const [busquedaNumero, setBusquedaNumero] = useState('')
+  const [resultadoBusqueda, setResultadoBusqueda] = useState<NotaListado[] | null>(null)
+  const [buscandoNumero, setBuscandoNumero] = useState(false)
+
+  useEffect(() => {
+    const t = busquedaNumero.trim()
+    if (!t) {
+      setResultadoBusqueda(null)
+      setBuscandoNumero(false)
+      return
+    }
+    const numero = Number(t)
+    if (!Number.isInteger(numero) || numero <= 0) {
+      setResultadoBusqueda([])
+      setBuscandoNumero(false)
+      return
+    }
+    setBuscandoNumero(true)
+    const temporizador = setTimeout(async () => {
+      const r: any = await buscarNotaPorNumero(numero)
+      if (!r) {
+        setResultadoBusqueda([])
+      } else {
+        const normalizada: NotaListado = {
+          ...r,
+          clientes: unoOnulo(r.clientes),
+          tipo_notas: unoOnulo(r.tipo_notas),
+          asignados: unoOnulo(r.asignados),
+          llevar_opciones: unoOnulo(r.llevar_opciones),
+          domicilios: (() => {
+            const d = unoOnulo(r.domicilios)
+            return d ? { ...d, municipios: unoOnulo(d.municipios) } : null
+          })(),
+        }
+        setResultadoBusqueda([normalizada])
+      }
+      setBuscandoNumero(false)
+    }, 350)
+    return () => clearTimeout(temporizador)
+  }, [busquedaNumero])
+
+  const enBusquedaNumero = busquedaNumero.trim().length > 0
+  const notasVisibles = enBusquedaNumero ? (resultadoBusqueda ?? []) : notas
+
   function abrirNueva() {
     setNotaEditando(null)
     setModalAbierto(true)
@@ -96,19 +141,42 @@ export default function NotasExplorer({
         color="azul"
         titulo="Notas"
         subtitulo={`${totalNotas} notas registradas — página ${paginaActual} de ${totalPaginas}`}
+        extra={
+          <input
+            type="text"
+            inputMode="numeric"
+            value={busquedaNumero}
+            onChange={(e) => setBusquedaNumero(e.target.value.replace(/[^0-9]/g, ''))}
+            placeholder="Buscar por número de nota..."
+            style={{
+              width: '100%', height: 36, borderRadius: 8, border: '1px solid #d6daf8',
+              padding: '0 12px', fontSize: 13, boxSizing: 'border-box', background: '#fff',
+            }}
+          />
+        }
         accion={<button onClick={abrirNueva} style={botonPrimario}>+ Nueva nota</button>}
       />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {notas.length === 0 && (
+        {enBusquedaNumero && buscandoNumero && (
+          <p style={{ fontSize: 13, color: '#9ca3af', margin: 0 }}>Buscando...</p>
+        )}
+        {enBusquedaNumero && !buscandoNumero && notasVisibles.length === 0 && (
+          <div style={{ padding: '2rem', textAlign: 'center', color: '#9ca3af', fontSize: 14, border: '1px solid #e5e7eb', borderRadius: 12, background: '#fff' }}>
+            No se encontró ninguna nota con el número "{busquedaNumero}".
+          </div>
+        )}
+        {!enBusquedaNumero && notas.length === 0 && (
           <div style={{ padding: '2rem', textAlign: 'center', color: '#9ca3af', fontSize: 14, border: '1px solid #e5e7eb', borderRadius: 12, background: '#fff' }}>
             Todavía no hay notas registradas.
           </div>
         )}
-        {notas.map((n) => <TarjetaNota key={n.id} nota={n} onClick={() => setNotaDetalle(n)} />)}
+        {notasVisibles.map((n) => <TarjetaNota key={n.id} nota={n} onClick={() => setNotaDetalle(n)} />)}
       </div>
 
-      <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} baseHref="/notas" color="#3441E0" />
+      {!enBusquedaNumero && (
+        <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} baseHref="/notas" color="#3441E0" />
+      )}
 
       {modalAbierto && (
         <ModalNota
