@@ -71,7 +71,7 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
           height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid #d1d5db;
           background: #fff; font-size: 13px; cursor: pointer;
         }
-        table.orden { width: 100%; border-collapse: collapse; border: 1.5px solid #1c2230; outline: 1.5px solid #1c2230; outline-offset: -1px; page-break-inside: avoid; }
+        table.orden { width: 100%; border-collapse: collapse; border: 2px solid #1c2230; page-break-inside: avoid; }
         table.orden td { border: 1.2px solid #1c2230; padding: 6px 12px; font-size: 12.5px; vertical-align: top; }
         td.etiqueta, .etiqueta { font-weight: 600; font-size: 10.5px; background: #eaecef; white-space: nowrap; width: 125px; }
         .cabecera { background: #eceef1; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #1c2230; border-bottom: none; }
