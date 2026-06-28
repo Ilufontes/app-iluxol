@@ -41,12 +41,14 @@ export async function crearDomicilioRapido(datos: {
   cliente_id: number
   direccion: string
   municipio_id: number
+  zona?: string
+  datos_vivienda?: string
 }) {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('domicilios')
     .insert(datos)
-    .select('id, direccion, municipios ( nombre )')
+    .select('id, direccion, zona, datos_vivienda, municipios ( nombre )')
     .single()
 
   if (error) throw new Error('No se pudo crear el domicilio.')
