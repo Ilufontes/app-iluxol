@@ -56,6 +56,12 @@ export default async function AjustesPage({
         placeholder={pestañaActiva.placeholder}
         itemsIniciales={items ?? []}
       />
+
+      <div style={{ marginTop: 32, paddingTop: 16, borderTop: '1px solid #e5e7eb' }}>
+        <a href="/migrar-lopd" style={{ fontSize: 13, color: '#0F6E56', textDecoration: 'underline' }}>
+          Herramienta puntual: migrar documentos LOPD en bloque →
+        </a>
+      </div>
     </div>
   )
 }
