@@ -9,6 +9,7 @@ import {
   actualizarNota,
 } from './actions'
 import CabeceraSeccion from '@/components/CabeceraSeccion'
+import Paginacion from '@/components/Paginacion'
 
 type Opcion = { id: number; nombre: string }
 
@@ -47,12 +48,18 @@ export default function NotasExplorer({
   asignados,
   llevarOpciones,
   municipios,
+  paginaActual,
+  totalPaginas,
+  totalNotas,
 }: {
   notasIniciales: NotaListado[]
   tiposNota: Opcion[]
   asignados: Opcion[]
   llevarOpciones: Opcion[]
   municipios: Opcion[]
+  paginaActual: number
+  totalPaginas: number
+  totalNotas: number
 }) {
   const [notas, setNotas] = useState<NotaListado[]>(notasIniciales)
   const [modalAbierto, setModalAbierto] = useState(false)
@@ -71,7 +78,15 @@ export default function NotasExplorer({
   }
 
   function alGuardar(nota: NotaListado, esNueva: boolean) {
-    setNotas((prev) => (esNueva ? [nota, ...prev] : prev.map((n) => (n.id === nota.id ? nota : n))))
+    if (esNueva) {
+      // Solo insertamos en caliente si estamos viendo la primera página
+      // (las notas nuevas son siempre las de número más alto, que aparecen ahí).
+      if (paginaActual === 1) {
+        setNotas((prev) => [nota, ...prev].slice(0, 40))
+      }
+    } else {
+      setNotas((prev) => prev.map((n) => (n.id === nota.id ? nota : n)))
+    }
     setModalAbierto(false)
   }
 
@@ -80,7 +95,7 @@ export default function NotasExplorer({
       <CabeceraSeccion
         color="azul"
         titulo="Notas"
-        subtitulo={`${notas.length} notas registradas`}
+        subtitulo={`${totalNotas} notas registradas — página ${paginaActual} de ${totalPaginas}`}
         accion={<button onClick={abrirNueva} style={botonPrimario}>+ Nueva nota</button>}
       />
 
@@ -92,6 +107,8 @@ export default function NotasExplorer({
         )}
         {notas.map((n) => <TarjetaNota key={n.id} nota={n} onClick={() => setNotaDetalle(n)} />)}
       </div>
+
+      <Paginacion paginaActual={paginaActual} totalPaginas={totalPaginas} baseHref="/notas" color="#3441E0" />
 
       {modalAbierto && (
         <ModalNota
