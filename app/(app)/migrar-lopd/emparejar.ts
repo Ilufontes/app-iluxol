@@ -3,11 +3,11 @@
 
 export type ClienteParaMatch = { id: number; nombre: string }
 
+export type Candidato = { id: number; nombre: string; similitud: number }
+
 export type ResultadoMatch =
   | { tipo: 'exacto'; clienteId: number; clienteNombre: string }
-  | { tipo: 'sugerencia'; clienteId: number; clienteNombre: string; similitud: number }
-  | { tipo: 'sin_coincidencia' }
-  | { tipo: 'multiple'; opciones: { id: number; nombre: string }[] }
+  | { tipo: 'elegir'; candidatos: Candidato[] } // siempre 1 a 3 opciones, ordenadas de mejor a peor
 
 function normalizar(texto: string) {
   return texto
@@ -62,12 +62,14 @@ function similitudTexto(a: string, b: string): number {
 // dos personas que comparten solo el nombre de pila ("MARIA ISABEL X" vs "MARIA ISABEL Y")
 // no salgan como muy parecidas: lo que de verdad distingue a una persona de otra son
 // TODAS sus palabras, no solo las primeras.
+// Además penaliza fuerte cuando el número de palabras es muy distinto (p.ej. un
+// cliente registrado solo como "ANA" no debe poder competir limpio contra
+// "ANA FERNANDEZ FIGUEROA"): cuantas más palabras le falten, más penalización.
 function similitudPorPalabras(nombreA: string, nombreB: string): number {
   const palabrasA = palabras(nombreA)
   const palabrasB = palabras(nombreB)
   if (palabrasA.length === 0 || palabrasB.length === 0) return 0
 
-  // Para cada palabra de A, busca su mejor pareja en B (por similitud de texto).
   const usadasEnB = new Set<number>()
   let sumaSimilitudes = 0
   for (const pa of palabrasA) {
@@ -85,13 +87,26 @@ function similitudPorPalabras(nombreA: string, nombreB: string): number {
     sumaSimilitudes += mejorSim
   }
 
-  // Promedio sobre el número total de palabras distintas entre ambos nombres,
-  // para penalizar tanto palabras que faltan como palabras de más.
+  // Promedio sobre el número total de palabras (penaliza palabras que faltan o de más).
   const totalPalabras = Math.max(palabrasA.length, palabrasB.length)
-  return sumaSimilitudes / totalPalabras
+  const base = sumaSimilitudes / totalPalabras
+
+  // Penalización por diferencia de longitud — pero NO simétrica:
+  // - Si el ARCHIVO tiene menos palabras que el CLIENTE (p.ej. archivo "ANA FERNANDEZ"
+  //   y cliente "ANA FERNANDEZ FIGUEROA"), es un caso legítimo y frecuente
+  //   (apellido materno omitido al nombrar el escaneo): penalización suave.
+  // - Si el CLIENTE tiene menos palabras que el archivo (p.ej. cliente "ANA" registrado
+  //   solo con el nombre de pila), es mucho más sospechoso de ser un registro
+  //   genérico/incompleto que no corresponde a este archivo: penalización fuerte.
+  const archivoMasCorto = palabrasA.length < palabrasB.length
+  const diferenciaPalabras = Math.abs(palabrasA.length - palabrasB.length)
+  const factorPorPalabra = archivoMasCorto ? 0.08 : 0.18
+  const factorPenalizacion = 1 - diferenciaPalabras * factorPorPalabra
+  return base * Math.max(factorPenalizacion, 0.3)
 }
 
-const UMBRAL_SUGERENCIA = 0.82 // alto a propósito: prioriza dejar "sin coincidencia" antes que sugerir mal
+const MAX_CANDIDATOS = 3
+const SIMILITUD_MINIMA_PARA_LISTAR = 0.35 // por debajo de esto, ni se muestra como opción
 
 export function emparejarNombreArchivo(
   nombreArchivo: string,
@@ -99,51 +114,19 @@ export function emparejarNombreArchivo(
 ): ResultadoMatch {
   const base = normalizar(nombreArchivo)
 
+  // Coincidencia exacta de texto completo: si hay una sola, se asigna sola.
   const exactos = clientes.filter((c) => normalizar(c.nombre) === base)
   if (exactos.length === 1) {
     return { tipo: 'exacto', clienteId: exactos[0].id, clienteNombre: exactos[0].nombre }
   }
-  if (exactos.length > 1) {
-    return { tipo: 'multiple', opciones: exactos.map((c) => ({ id: c.id, nombre: c.nombre })) }
-  }
 
-  // Coincidencia donde el conjunto de palabras de uno está completamente
-  // contenido en el otro (ej. "FRANJUPLA SL" dentro de "FRANJUPLA S.L EMMA").
-  // Exige que TODAS las palabras del más corto aparezcan en el más largo,
-  // no solo un fragmento de texto suelto.
-  const palabrasBase = new Set(palabras(base))
-  const contenidos = clientes.filter((c) => {
-    const palabrasCliente = new Set(palabras(c.nombre))
-    const [chico, grande] = palabrasBase.size <= palabrasCliente.size
-      ? [palabrasBase, palabrasCliente]
-      : [palabrasCliente, palabrasBase]
-    if (chico.size === 0) return false
-    return [...chico].every((p) => grande.has(p))
-  })
-  if (contenidos.length === 1) {
-    return { tipo: 'exacto', clienteId: contenidos[0].id, clienteNombre: contenidos[0].nombre }
-  }
-  if (contenidos.length > 1) {
-    return { tipo: 'multiple', opciones: contenidos.map((c) => ({ id: c.id, nombre: c.nombre })) }
-  }
+  // En cualquier otro caso (incluida coincidencia exacta múltiple), se calculan
+  // todos los candidatos por similitud y se ofrecen los mejores para elegir.
+  const candidatos: Candidato[] = clientes
+    .map((c) => ({ id: c.id, nombre: c.nombre, similitud: similitudPorPalabras(base, c.nombre) }))
+    .filter((c) => c.similitud >= SIMILITUD_MINIMA_PARA_LISTAR)
+    .sort((a, b) => b.similitud - a.similitud)
+    .slice(0, MAX_CANDIDATOS)
 
-  // Sin coincidencia exacta ni de contención: comparamos por palabras para encontrar
-  // al cliente más parecido, sin dejar que solo el nombre de pila compartido confunda.
-  let mejor: { cliente: ClienteParaMatch; similitud: number } | null = null
-  for (const c of clientes) {
-    const similitud = similitudPorPalabras(base, c.nombre)
-    if (!mejor || similitud > mejor.similitud) {
-      mejor = { cliente: c, similitud }
-    }
-  }
-  if (mejor && mejor.similitud >= UMBRAL_SUGERENCIA) {
-    return {
-      tipo: 'sugerencia',
-      clienteId: mejor.cliente.id,
-      clienteNombre: mejor.cliente.nombre,
-      similitud: mejor.similitud,
-    }
-  }
-
-  return { tipo: 'sin_coincidencia' }
+  return { tipo: 'elegir', candidatos }
 }
