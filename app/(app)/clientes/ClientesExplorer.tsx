@@ -11,6 +11,9 @@ import {
   subirFotoDomicilio,
   borrarFotoDomicilio,
   buscarClientesGlobal,
+  listarDocumentosCliente,
+  subirDocumentoCliente,
+  borrarDocumentoCliente,
 } from './actions'
 import CabeceraSeccion from '@/components/CabeceraSeccion'
 import Paginacion from '@/components/Paginacion'
@@ -349,6 +352,12 @@ function ModalCliente({
               <input type="checkbox" checked={lpd} onChange={(e) => setLpd(e.target.checked)} />
               LPD firmado
             </label>
+
+            {clienteIdActual && (
+              <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 12 }}>
+                <SeccionDocumentosLOPD clienteId={clienteIdActual} onSubido={() => setLpd(true)} />
+              </div>
+            )}
 
             <div style={{ borderTop: '1px solid #e5e7eb', marginTop: 8, paddingTop: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -707,6 +716,104 @@ function SeccionFotos({ domicilioId }: { domicilioId: number }) {
   )
 }
 
+type DocumentoCliente = { id: number; nombre_archivo: string; ruta_storage: string; url: string | null; subido_en: string }
+
+function SeccionDocumentosLOPD({ clienteId, onSubido }: { clienteId: number; onSubido: () => void }) {
+  const [documentos, setDocumentos] = useState<DocumentoCliente[]>([])
+  const [cargando, setCargando] = useState(true)
+  const [subiendo, setSubiendo] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let activo = true
+    setCargando(true)
+    listarDocumentosCliente(clienteId).then((r) => {
+      if (activo) {
+        setDocumentos(r as DocumentoCliente[])
+        setCargando(false)
+      }
+    })
+    return () => { activo = false }
+  }, [clienteId])
+
+  async function handleSubirArchivo(e: React.ChangeEvent<HTMLInputElement>) {
+    const archivo = e.target.files?.[0]
+    if (!archivo) return
+    setSubiendo(true)
+    setError(null)
+    try {
+      const formData = new FormData()
+      formData.append('archivo', archivo)
+      await subirDocumentoCliente(clienteId, formData)
+      const r = await listarDocumentosCliente(clienteId)
+      setDocumentos(r as DocumentoCliente[])
+      onSubido()
+    } catch {
+      setError('No se pudo subir el documento. Inténtalo de nuevo.')
+    } finally {
+      setSubiendo(false)
+      e.target.value = ''
+    }
+  }
+
+  async function handleBorrar(doc: DocumentoCliente) {
+    await borrarDocumentoCliente(doc.id, doc.ruta_storage)
+    setDocumentos((prev) => prev.filter((d) => d.id !== doc.id))
+  }
+
+  return (
+    <div>
+      <p style={{ fontSize: 13, color: '#374151', margin: '0 0 8px', fontWeight: 500 }}>Documento LOPD</p>
+
+      {cargando && <p style={{ fontSize: 12, color: '#9ca3af' }}>Cargando documentos...</p>}
+      {!cargando && documentos.length === 0 && (
+        <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 8px' }}>Sin documento adjunto todavía.</p>
+      )}
+
+      {documentos.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+          {documentos.map((d) => (
+            <div key={d.id} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              border: '1px solid #e5e7eb', borderRadius: 8, padding: '8px 10px', fontSize: 13,
+            }}>
+              {d.url ? (
+                <a href={d.url} target="_blank" rel="noopener noreferrer" style={{ color: '#0F6E56', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  📄 {d.nombre_archivo}
+                </a>
+              ) : (
+                <span style={{ color: '#9ca3af' }}>{d.nombre_archivo}</span>
+              )}
+              <button
+                onClick={() => handleBorrar(d)}
+                aria-label="Borrar documento"
+                style={{ border: 'none', background: 'none', color: '#9ca3af', fontSize: 16, cursor: 'pointer', flexShrink: 0, marginLeft: 8 }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {error && <p style={{ color: '#b42318', fontSize: 12, margin: '0 0 8px' }}>{error}</p>}
+
+      <label style={{ display: 'inline-block' }}>
+        <input
+          type="file"
+          accept="application/pdf,image/*"
+          onChange={handleSubirArchivo}
+          disabled={subiendo}
+          style={{ display: 'none' }}
+        />
+        <span style={{ ...botonSecundarioVerde, display: 'inline-flex', cursor: subiendo ? 'default' : 'pointer' }}>
+          {subiendo ? 'Subiendo...' : '+ Adjuntar documento LOPD'}
+        </span>
+      </label>
+    </div>
+  )
+}
+
 function Campo({ etiqueta, children, flex }: { etiqueta: string; children: React.ReactNode; flex?: boolean }) {
   return (
     <div style={flex ? { flex: 1 } : undefined}>
@@ -727,6 +834,9 @@ const botonNaranja: React.CSSProperties = {
 }
 const botonSecundario: React.CSSProperties = {
   height: 30, padding: '0 12px', borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', fontSize: 12, cursor: 'pointer',
+}
+const botonSecundarioVerde: React.CSSProperties = {
+  height: 30, padding: '0 12px', borderRadius: 8, border: '1px solid #1D9E75', background: '#fff', color: '#0F6E56', fontSize: 12, cursor: 'pointer',
 }
 const botonCerrar: React.CSSProperties = {
   border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#6b7280', width: 28, height: 28,
