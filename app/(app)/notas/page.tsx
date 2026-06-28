@@ -1,11 +1,22 @@
 import { createClient } from '@/lib/supabase/server'
 import NotasExplorer, { type NotaListado } from './NotasExplorer'
 
-export default async function NotasPage() {
+const POR_PAGINA = 40
+
+export default async function NotasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ pagina?: string }>
+}) {
+  const { pagina } = await searchParams
+  const paginaActual = Math.max(1, Number(pagina) || 1)
+  const desde = (paginaActual - 1) * POR_PAGINA
+  const hasta = desde + POR_PAGINA - 1
+
   const supabase = await createClient()
 
   const [
-    { data: notas },
+    { data: notas, count: totalNotas },
     { data: tiposNota },
     { data: asignados },
     { data: llevarOpciones },
@@ -21,9 +32,9 @@ export default async function NotasPage() {
         tipo_notas ( nombre ),
         asignados ( nombre ),
         llevar_opciones ( nombre )
-      `)
-      .order('creado_en', { ascending: false })
-      .limit(50),
+      `, { count: 'exact' })
+      .order('numero_nota', { ascending: false })
+      .range(desde, hasta),
     supabase.from('tipo_notas').select('id, nombre').eq('activo', true).order('nombre'),
     supabase.from('asignados').select('id, nombre').eq('activo', true).order('nombre'),
     supabase.from('llevar_opciones').select('id, nombre').eq('activo', true).order('nombre'),
@@ -48,6 +59,8 @@ export default async function NotasPage() {
     }
   })
 
+  const totalPaginas = Math.max(1, Math.ceil((totalNotas ?? 0) / POR_PAGINA))
+
   return (
     <NotasExplorer
       notasIniciales={notasNormalizadas}
@@ -55,6 +68,9 @@ export default async function NotasPage() {
       asignados={asignados ?? []}
       llevarOpciones={llevarOpciones ?? []}
       municipios={municipios ?? []}
+      paginaActual={paginaActual}
+      totalPaginas={totalPaginas}
+      totalNotas={totalNotas ?? 0}
     />
   )
 }
