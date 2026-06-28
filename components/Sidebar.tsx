@@ -5,11 +5,11 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 const ENLACES = [
-  { href: '/', etiqueta: 'Inicio' },
-  { href: '/notas', etiqueta: 'Notas' },
-  { href: '/clientes', etiqueta: 'Clientes' },
-  { href: '/buscar', etiqueta: 'Buscador' },
-  { href: '/ajustes', etiqueta: 'Ajustes' },
+  { href: '/', etiqueta: 'Inicio', color: '#9CA3AF' },
+  { href: '/notas', etiqueta: 'Notas', color: '#5B7FFF' },
+  { href: '/clientes', etiqueta: 'Clientes', color: '#3DCB9A' },
+  { href: '/buscar', etiqueta: 'Buscador', color: '#A89BF0' },
+  { href: '/ajustes', etiqueta: 'Ajustes', color: '#9CA3AF' },
 ]
 
 export default function Sidebar({ nombreEmpleado }: { nombreEmpleado: string }) {
@@ -45,14 +45,22 @@ export default function Sidebar({ nombreEmpleado }: { nombreEmpleado: string }) 
               key={enlace.href}
               href={enlace.href}
               style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
                 padding: '10px 12px',
                 borderRadius: 8,
                 fontSize: 14,
+                fontWeight: activo ? 500 : 400,
                 color: activo ? '#ffffff' : '#aab1c0',
-                background: activo ? 'rgba(255,255,255,0.08)' : 'transparent',
+                background: activo ? `${enlace.color}26` : 'transparent',
                 textDecoration: 'none',
               }}
             >
+              <span style={{
+                width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                background: enlace.color,
+              }} />
               {enlace.etiqueta}
             </Link>
           )
