@@ -11,7 +11,7 @@ import {
 
 type Opcion = { id: number; nombre: string }
 
-type DomicilioCliente = { id: number; direccion: string; zona?: string | null; municipios: { nombre: string } | null }
+type DomicilioCliente = { id: number; direccion: string; zona?: string | null; datos_vivienda?: string | null; municipios: { nombre: string } | null }
 type ClienteResultado = {
   id: number
   nombre: string
@@ -261,6 +261,8 @@ function ModalNota({
   const [mostrandoFormDomicilio, setMostrandoFormDomicilio] = useState(false)
   const [nuevaDireccion, setNuevaDireccion] = useState('')
   const [nuevoMunicipioId, setNuevoMunicipioId] = useState<number | ''>('')
+  const [nuevaZona, setNuevaZona] = useState('')
+  const [nuevosDatosVivienda, setNuevosDatosVivienda] = useState('')
 
   const [mostrandoFormCliente, setMostrandoFormCliente] = useState(false)
   const [ncNombre, setNcNombre] = useState('')
@@ -333,17 +335,22 @@ function ModalNota({
         cliente_id: clienteSeleccionado.id,
         direccion: nuevaDireccion.trim(),
         municipio_id: Number(nuevoMunicipioId),
+        zona: nuevaZona.trim(),
+        datos_vivienda: nuevosDatosVivienda.trim(),
       })
       const nuevoDomicilio: DomicilioCliente = {
         id: creado.id,
         direccion: creado.direccion,
         zona: creado.zona ?? null,
+        datos_vivienda: creado.datos_vivienda ?? null,
         municipios: unoOnulo(creado.municipios),
       }
       setClienteSeleccionado({ ...clienteSeleccionado, domicilios: [...clienteSeleccionado.domicilios, nuevoDomicilio] })
       setDomicilioId(nuevoDomicilio.id)
       setNuevaDireccion('')
       setNuevoMunicipioId('')
+      setNuevaZona('')
+      setNuevosDatosVivienda('')
       setMostrandoFormDomicilio(false)
     } catch {
       setError('No se pudo añadir el domicilio.')
@@ -382,17 +389,22 @@ function ModalNota({
 
   return (
     <div style={overlayStyle}>
-      <div style={modalStyle}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 500 }}>{esEdicion ? `Editar nota ${notaEditando!.numero_nota ?? notaEditando!.id}` : 'Nueva nota'}</h2>
-          <button onClick={onCerrar} style={botonCerrar}>×</button>
+      <div style={{ ...modalStyle, padding: 0, overflow: 'hidden' }}>
+        <div style={{
+          background: 'linear-gradient(135deg, #3441E0 0%, #2230B8 100%)',
+          padding: '18px 1.5rem', position: 'relative', marginBottom: 16,
+        }}>
+          <button onClick={onCerrar} style={{ ...botonCerrar, position: 'absolute', top: 12, right: 14, color: '#fff', background: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>×</button>
+          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 500, color: '#fff' }}>{esEdicion ? `Editar nota ${notaEditando!.numero_nota ?? notaEditando!.id}` : 'Nueva nota'}</h2>
         </div>
+        <div style={{ padding: '0 1.5rem 1.5rem' }}>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
+          <div style={bloqueColor.verde}>
           <Campo etiqueta="Cliente">
             {clienteSeleccionado ? (
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #d1d5db', borderRadius: 8, padding: '8px 10px', background: '#f9fafb' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #cfe8db', borderRadius: 8, padding: '8px 10px', background: '#fff' }}>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 500 }}>{clienteSeleccionado.nombre}</div>
                   <div style={{ fontSize: 12, color: '#9ca3af' }}>{clienteSeleccionado.telefono || 'Sin teléfono'}</div>
@@ -410,11 +422,11 @@ function ModalNota({
                   value={terminoBusqueda}
                   onChange={(e) => manejarBusqueda(e.target.value)}
                   placeholder="Buscar cliente por nombre o teléfono"
-                  style={inputBase}
+                  style={{ ...inputBase, border: '1px solid #cfe8db', background: '#fff' }}
                 />
                 {buscando && <p style={{ fontSize: 12, color: '#9ca3af', margin: '6px 0 0' }}>Buscando...</p>}
                 {resultados.length > 0 && (
-                  <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, marginTop: 6, maxHeight: 160, overflowY: 'auto' }}>
+                  <div style={{ border: '1px solid #cfe8db', borderRadius: 8, marginTop: 6, maxHeight: 160, overflowY: 'auto', background: '#fff' }}>
                     {resultados.map((c) => (
                       <div
                         key={c.id}
@@ -428,11 +440,11 @@ function ModalNota({
                 )}
 
                 {!mostrandoFormCliente ? (
-                  <button onClick={() => setMostrandoFormCliente(true)} style={{ ...botonSecundario, width: '100%', marginTop: 6 }}>
+                  <button onClick={() => setMostrandoFormCliente(true)} style={{ ...botonSecundarioVerde, width: '100%', marginTop: 6 }}>
                     + Crear cliente nuevo
                   </button>
                 ) : (
-                  <div style={{ background: '#f9fafb', borderRadius: 8, padding: 10, marginTop: 6 }}>
+                  <div style={{ background: '#fff', border: '1px solid #cfe8db', borderRadius: 8, padding: 10, marginTop: 6 }}>
                     <input
                       value={ncNombre}
                       onChange={(e) => setNcNombre(e.target.value)}
@@ -467,20 +479,22 @@ function ModalNota({
                     />
                     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                       <button onClick={() => setMostrandoFormCliente(false)} style={botonSecundario}>Cancelar</button>
-                      <button onClick={handleCrearClienteRapido} style={botonPrimario}>Crear y usar en esta nota</button>
+                      <button onClick={handleCrearClienteRapido} style={botonVerde}>Crear y usar en esta nota</button>
                     </div>
                   </div>
                 )}
               </div>
             )}
           </Campo>
+          </div>
 
+          <div style={bloqueColor.naranja}>
           <Campo etiqueta="Domicilio">
             <select
               value={domicilioId}
               onChange={(e) => setDomicilioId(e.target.value ? Number(e.target.value) : '')}
               disabled={!clienteSeleccionado}
-              style={inputBase}
+              style={{ ...inputBase, border: '1px solid #efd9b3', background: '#fff' }}
             >
               <option value="">{clienteSeleccionado ? 'Sin domicilio seleccionado' : 'Selecciona un cliente primero'}</option>
               {clienteSeleccionado?.domicilios.map((d) => (
@@ -490,13 +504,13 @@ function ModalNota({
             <button
               onClick={() => setMostrandoFormDomicilio((v) => !v)}
               disabled={!clienteSeleccionado}
-              style={{ ...botonSecundario, marginTop: 6 }}
+              style={{ ...botonSecundarioNaranja, marginTop: 6 }}
             >
               + Añadir otro domicilio a este cliente
             </button>
 
             {mostrandoFormDomicilio && (
-              <div style={{ background: '#f9fafb', borderRadius: 8, padding: 10, marginTop: 8 }}>
+              <div style={{ background: '#fff', border: '1px solid #efd9b3', borderRadius: 8, padding: 10, marginTop: 8 }}>
                 <input
                   value={nuevaDireccion}
                   onChange={(e) => setNuevaDireccion(e.target.value)}
@@ -506,28 +520,43 @@ function ModalNota({
                 <select
                   value={nuevoMunicipioId}
                   onChange={(e) => setNuevoMunicipioId(e.target.value ? Number(e.target.value) : '')}
-                  style={{ ...inputBase, marginBottom: 8 }}
+                  style={{ ...inputBase, marginBottom: 6 }}
                 >
                   <option value="">Selecciona municipio...</option>
                   {municipios.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
                 </select>
+                <input
+                  value={nuevaZona}
+                  onChange={(e) => setNuevaZona(e.target.value)}
+                  placeholder="Zona (opcional)"
+                  style={{ ...inputBase, marginBottom: 6 }}
+                />
+                <textarea
+                  value={nuevosDatosVivienda}
+                  onChange={(e) => setNuevosDatosVivienda(e.target.value)}
+                  rows={2}
+                  placeholder="Datos de la vivienda: acceso, planta, observaciones... (opcional)"
+                  style={{ ...inputBase, height: 'auto', padding: 8, resize: 'vertical', marginBottom: 8 }}
+                />
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                   <button onClick={() => setMostrandoFormDomicilio(false)} style={botonSecundario}>Cancelar</button>
-                  <button onClick={handleCrearDomicilio} style={botonPrimario}>Guardar domicilio</button>
+                  <button onClick={handleCrearDomicilio} style={botonNaranja}>Guardar domicilio</button>
                 </div>
               </div>
             )}
           </Campo>
+          </div>
 
+          <div style={bloqueColor.azul}>
           <div style={{ display: 'flex', gap: 10 }}>
             <Campo etiqueta="Tipo de nota" flex>
-              <select value={tipoNotaId} onChange={(e) => setTipoNotaId(e.target.value ? Number(e.target.value) : '')} style={inputBase}>
+              <select value={tipoNotaId} onChange={(e) => setTipoNotaId(e.target.value ? Number(e.target.value) : '')} style={{ ...inputBase, border: '1px solid #c9cef7', background: '#fff' }}>
                 <option value="">Selecciona...</option>
                 {tiposNota.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
               </select>
             </Campo>
             <Campo etiqueta="Asignada" flex>
-              <select value={asignadoId} onChange={(e) => setAsignadoId(e.target.value ? Number(e.target.value) : '')} style={inputBase}>
+              <select value={asignadoId} onChange={(e) => setAsignadoId(e.target.value ? Number(e.target.value) : '')} style={{ ...inputBase, border: '1px solid #c9cef7', background: '#fff' }}>
                 <option value="">Selecciona...</option>
                 {asignados.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
               </select>
@@ -535,7 +564,7 @@ function ModalNota({
           </div>
 
           <Campo etiqueta="Fecha de entrada">
-            <input type="date" value={fechaEntrada} onChange={(e) => setFechaEntrada(e.target.value)} style={inputBase} />
+            <input type="date" value={fechaEntrada} onChange={(e) => setFechaEntrada(e.target.value)} style={{ ...inputBase, border: '1px solid #c9cef7', background: '#fff' }} />
           </Campo>
 
           <Campo etiqueta="Observaciones">
@@ -544,12 +573,12 @@ function ModalNota({
               onChange={(e) => setObservaciones(e.target.value)}
               rows={3}
               placeholder="Describe el trabajo o aviso"
-              style={{ ...inputBase, height: 'auto', padding: 8, resize: 'vertical' }}
+              style={{ ...inputBase, height: 'auto', padding: 8, resize: 'vertical', border: '1px solid #c9cef7', background: '#fff' }}
             />
           </Campo>
 
           <Campo etiqueta="Llevar">
-            <select value={llevarId} onChange={(e) => setLlevarId(e.target.value ? Number(e.target.value) : '')} style={inputBase}>
+            <select value={llevarId} onChange={(e) => setLlevarId(e.target.value ? Number(e.target.value) : '')} style={{ ...inputBase, border: '1px solid #c9cef7', background: '#fff' }}>
               <option value="">Selecciona...</option>
               {llevarOpciones.map((l) => <option key={l.id} value={l.id}>{l.nombre}</option>)}
             </select>
@@ -557,11 +586,12 @@ function ModalNota({
 
           <div style={{ display: 'flex', gap: 10 }}>
             <Campo etiqueta="Día de cita" flex>
-              <input type="date" value={diaCita} onChange={(e) => setDiaCita(e.target.value)} style={inputBase} />
+              <input type="date" value={diaCita} onChange={(e) => setDiaCita(e.target.value)} style={{ ...inputBase, border: '1px solid #c9cef7', background: '#fff' }} />
             </Campo>
             <Campo etiqueta="Hora" flex>
-              <input type="time" value={horaCita} onChange={(e) => setHoraCita(e.target.value)} style={inputBase} />
+              <input type="time" value={horaCita} onChange={(e) => setHoraCita(e.target.value)} style={{ ...inputBase, border: '1px solid #c9cef7', background: '#fff' }} />
             </Campo>
+          </div>
           </div>
         </div>
 
@@ -572,6 +602,7 @@ function ModalNota({
           <button onClick={handleGuardarNota} disabled={guardando} style={botonPrimario}>
             {guardando ? 'Guardando...' : esEdicion ? 'Guardar cambios' : 'Guardar nota'}
           </button>
+        </div>
         </div>
       </div>
     </div>
@@ -642,7 +673,7 @@ function PanelDetalleNota({
         )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '16px 24px', borderTop: '1px solid #e5e7eb', marginTop: 8 }}>
-          <button onClick={onEditar} style={botonEditarDetalle}>Editar</button>
+          <button onClick={onEditar} style={botonPrimario}>Editar</button>
           <a
             href={`/notas-imprimir/${nota.id}`}
             target="_blank"
@@ -672,11 +703,20 @@ const inputBase: React.CSSProperties = {
 const botonPrimario: React.CSSProperties = {
   height: 36, padding: '0 16px', borderRadius: 8, border: 'none', background: '#3441E0', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
 }
-const botonEditarDetalle: React.CSSProperties = {
-  height: 36, padding: '0 16px', borderRadius: 8, border: '1px solid #3441E0', background: '#fff', color: '#3441E0', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+const botonVerde: React.CSSProperties = {
+  height: 36, padding: '0 16px', borderRadius: 8, border: 'none', background: '#1D9E75', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+}
+const botonNaranja: React.CSSProperties = {
+  height: 36, padding: '0 16px', borderRadius: 8, border: 'none', background: '#BA7517', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
 }
 const botonSecundario: React.CSSProperties = {
   height: 30, padding: '0 12px', borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', fontSize: 12, cursor: 'pointer',
+}
+const botonSecundarioVerde: React.CSSProperties = {
+  height: 30, padding: '0 12px', borderRadius: 8, border: '1px solid #1D9E75', background: '#fff', color: '#0F6E56', fontSize: 12, cursor: 'pointer',
+}
+const botonSecundarioNaranja: React.CSSProperties = {
+  height: 30, padding: '0 12px', borderRadius: 8, border: '1px solid #BA7517', background: '#fff', color: '#854F0B', fontSize: 12, cursor: 'pointer',
 }
 const botonCerrar: React.CSSProperties = {
   border: 'none', background: 'none', fontSize: 20, cursor: 'pointer', color: '#6b7280', width: 28, height: 28,
@@ -686,4 +726,9 @@ const overlayStyle: React.CSSProperties = {
 }
 const modalStyle: React.CSSProperties = {
   background: '#fff', borderRadius: 12, width: 560, maxWidth: '92vw', maxHeight: '88vh', overflowY: 'auto', padding: '1.5rem',
+}
+const bloqueColor = {
+  verde: { borderLeft: '3px solid #1D9E75', background: '#F2FAF6', borderRadius: 8, padding: '12px' } as React.CSSProperties,
+  naranja: { borderLeft: '3px solid #BA7517', background: '#FBF3E6', borderRadius: 8, padding: '12px' } as React.CSSProperties,
+  azul: { borderLeft: '3px solid #3441E0', background: '#F0F2FD', borderRadius: 8, padding: '12px', display: 'flex', flexDirection: 'column', gap: 10 } as React.CSSProperties,
 }
