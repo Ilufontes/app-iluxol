@@ -758,7 +758,21 @@ function PanelDetalleNota({
           background: 'linear-gradient(135deg, #3441E0 0%, #2230B8 100%)',
           padding: '20px 24px', position: 'relative', flexShrink: 0,
         }}>
-          <button onClick={onCerrar} style={{ ...botonCerrar, position: 'absolute', top: 12, right: 14, color: '#fff', background: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>×</button>
+          <div style={{ position: 'absolute', top: 12, right: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+            {nota.cliente_id && (
+              <a
+                href={`/clientes?cliente=${nota.cliente_id}`}
+                style={{
+                  height: 26, padding: '0 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.4)',
+                  background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 12,
+                  display: 'inline-flex', alignItems: 'center', textDecoration: 'none',
+                }}
+              >
+                Ver cliente
+              </a>
+            )}
+            <button onClick={onCerrar} style={{ ...botonCerrar, color: '#fff', background: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>×</button>
+          </div>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 500, color: '#fff' }}>Nota {nota.numero_nota ?? nota.id}</h2>
           <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', margin: '4px 0 0', letterSpacing: '0.5px' }}>
             {nota.tipo_notas?.nombre ?? 'Sin tipo'}
