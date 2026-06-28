@@ -6,21 +6,22 @@ import {
   cargarClientesParaMatch,
   subirDocumentoLopdMasivo,
 } from './actions'
-import { emparejarNombreArchivo, type ClienteParaMatch } from './emparejar'
+import { emparejarNombreArchivo, type ClienteParaMatch, type Candidato } from './emparejar'
 
-type EstadoArchivo = 'pendiente' | 'subiendo' | 'subido' | 'sin_coincidencia' | 'multiple' | 'error'
+type EstadoArchivo = 'pendiente' | 'subiendo' | 'subido' | 'elegir' | 'error'
 
 type ItemArchivo = {
   archivo: File
   estado: EstadoArchivo
   clienteId?: number
   clienteNombre?: string
-  opciones?: { id: number; nombre: string }[]
+  candidatos?: Candidato[]
   mensajeError?: string
 }
 
 export default function MigrarLopdPage() {
   const [items, setItems] = useState<ItemArchivo[]>([])
+  const [clientes, setClientes] = useState<ClienteParaMatch[]>([])
   const [procesando, setProcesando] = useState(false)
   const [analizando, setAnalizando] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -31,17 +32,16 @@ export default function MigrarLopdPage() {
     if (pdfs.length === 0) return
 
     setAnalizando(true)
-    const clientes = await cargarClientesParaMatch()
+    const listaClientes = await cargarClientesParaMatch()
+    setClientes(listaClientes)
 
     const resultado: ItemArchivo[] = []
     for (const archivo of pdfs) {
-      const match = emparejarNombreArchivo(archivo.name, clientes)
+      const match = emparejarNombreArchivo(archivo.name, listaClientes)
       if (match.tipo === 'exacto') {
         resultado.push({ archivo, estado: 'pendiente', clienteId: match.clienteId, clienteNombre: match.clienteNombre })
-      } else if (match.tipo === 'multiple') {
-        resultado.push({ archivo, estado: 'multiple', opciones: match.opciones })
       } else {
-        resultado.push({ archivo, estado: 'sin_coincidencia' })
+        resultado.push({ archivo, estado: 'elegir', candidatos: match.candidatos })
       }
     }
     setItems(resultado)
@@ -66,13 +66,17 @@ export default function MigrarLopdPage() {
     setProcesando(false)
   }
 
-  function asignarManualmente(index: number, clienteId: number, clienteNombre: string) {
+  function elegirCandidato(index: number, clienteId: number, clienteNombre: string) {
     setItems((prev) => prev.map((it, idx) => (idx === index ? { ...it, estado: 'pendiente', clienteId, clienteNombre } : it)))
+  }
+
+  function volverAElegir(index: number) {
+    setItems((prev) => prev.map((it, idx) => (idx === index ? { ...it, estado: 'elegir', clienteId: undefined, clienteNombre: undefined } : it)))
   }
 
   const listos = items.filter((i) => i.estado === 'pendiente').length
   const subidos = items.filter((i) => i.estado === 'subido').length
-  const conProblema = items.filter((i) => i.estado === 'sin_coincidencia' || i.estado === 'multiple' || i.estado === 'error').length
+  const porElegir = items.filter((i) => i.estado === 'elegir').length
 
   return (
     <div>
@@ -115,7 +119,7 @@ export default function MigrarLopdPage() {
           <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
             <Metrica etiqueta="Listos para subir" valor={listos} color="#1D9E75" />
             <Metrica etiqueta="Subidos" valor={subidos} color="#2230B8" />
-            <Metrica etiqueta="Necesitan revisión" valor={conProblema} color="#854F0B" />
+            <Metrica etiqueta="Por elegir" valor={porElegir} color="#854F0B" />
           </div>
 
           {listos > 0 && (
@@ -134,7 +138,13 @@ export default function MigrarLopdPage() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {items.map((item, idx) => (
-              <FilaArchivo key={idx} item={item} onAsignar={(id, nombre) => asignarManualmente(idx, id, nombre)} />
+              <FilaArchivo
+                key={idx}
+                item={item}
+                clientes={clientes}
+                onElegir={(id, nombre) => elegirCandidato(idx, id, nombre)}
+                onVolverAElegir={() => volverAElegir(idx)}
+              />
             ))}
           </div>
         </>
@@ -153,50 +163,102 @@ function Metrica({ etiqueta, valor, color }: { etiqueta: string; valor: number; 
 }
 
 function FilaArchivo({
-  item, onAsignar,
+  item, clientes, onElegir, onVolverAElegir,
 }: {
   item: ItemArchivo
-  onAsignar: (clienteId: number, clienteNombre: string) => void
+  clientes: ClienteParaMatch[]
+  onElegir: (clienteId: number, clienteNombre: string) => void
+  onVolverAElegir: () => void
 }) {
   const colores: Record<EstadoArchivo, { borde: string; fondo: string; texto: string }> = {
     pendiente: { borde: '#D6DAF8', fondo: '#EEF0FD', texto: '#2230B8' },
     subiendo: { borde: '#D6DAF8', fondo: '#EEF0FD', texto: '#2230B8' },
     subido: { borde: '#CDE9DC', fondo: '#E9F5EF', texto: '#0F6E56' },
-    sin_coincidencia: { borde: '#F0DFB9', fondo: '#FBF3E6', texto: '#854F0B' },
-    multiple: { borde: '#F0DFB9', fondo: '#FBF3E6', texto: '#854F0B' },
+    elegir: { borde: '#F0DFB9', fondo: '#FBF3E6', texto: '#854F0B' },
     error: { borde: '#F09595', fondo: '#FCEBEB', texto: '#791F1F' },
   }
   const c = colores[item.estado]
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: `1px solid ${c.borde}`, background: c.fondo, borderRadius: 8, padding: '8px 12px', gap: 12 }}>
-      <span style={{ fontSize: 13, color: '#1c2230', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-        {item.archivo.name}
-      </span>
+    <div style={{ border: `1px solid ${c.borde}`, background: c.fondo, borderRadius: 8, padding: '8px 12px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+        <span style={{ fontSize: 13, color: '#1c2230', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+          {item.archivo.name}
+        </span>
 
-      {item.estado === 'pendiente' && <span style={{ fontSize: 12, color: c.texto }}>→ {item.clienteNombre}</span>}
-      {item.estado === 'subiendo' && <span style={{ fontSize: 12, color: c.texto }}>Subiendo...</span>}
-      {item.estado === 'subido' && <span style={{ fontSize: 12, color: c.texto }}>✓ Subido a {item.clienteNombre}</span>}
-      {item.estado === 'error' && <span style={{ fontSize: 12, color: c.texto }}>{item.mensajeError ?? 'Error'}</span>}
+        {item.estado === 'pendiente' && (
+          <span style={{ fontSize: 12, color: c.texto, display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            → {item.clienteNombre}
+            <button onClick={onVolverAElegir} style={{ border: 'none', background: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 11, textDecoration: 'underline' }}>
+              cambiar
+            </button>
+          </span>
+        )}
+        {item.estado === 'subiendo' && <span style={{ fontSize: 12, color: c.texto, flexShrink: 0 }}>Subiendo...</span>}
+        {item.estado === 'subido' && <span style={{ fontSize: 12, color: c.texto, flexShrink: 0 }}>✓ Subido a {item.clienteNombre}</span>}
+        {item.estado === 'error' && <span style={{ fontSize: 12, color: c.texto, flexShrink: 0 }}>{item.mensajeError ?? 'Error'}</span>}
+      </div>
 
-      {item.estado === 'sin_coincidencia' && (
-        <span style={{ fontSize: 12, color: c.texto }}>Sin coincidencia — revisar a mano</span>
+      {item.estado === 'elegir' && (
+        <div style={{ marginTop: 8 }}>
+          {item.candidatos && item.candidatos.length > 0 ? (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {item.candidatos.map((cand) => (
+                <button
+                  key={cand.id}
+                  onClick={() => onElegir(cand.id, cand.nombre)}
+                  style={{
+                    fontSize: 12, padding: '4px 10px', borderRadius: 6, cursor: 'pointer',
+                    border: '1px solid #F0DFB9', background: '#fff', color: '#854F0B',
+                  }}
+                >
+                  {cand.nombre} <span style={{ color: '#A87A2E' }}>({Math.round(cand.similitud * 100)}%)</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p style={{ fontSize: 12, color: c.texto, margin: '0 0 6px' }}>Sin candidatos parecidos.</p>
+          )}
+          <BuscadorManual clientes={clientes} onElegir={onElegir} />
+        </div>
       )}
+    </div>
+  )
+}
 
-      {item.estado === 'multiple' && item.opciones && (
-        <select
-          onChange={(e) => {
-            const op = item.opciones!.find((o) => o.id === Number(e.target.value))
-            if (op) onAsignar(op.id, op.nombre)
-          }}
-          defaultValue=""
-          style={{ fontSize: 12, height: 28, borderRadius: 6, border: `1px solid ${c.borde}` }}
-        >
-          <option value="" disabled>Elige cuál es...</option>
-          {item.opciones.map((o) => (
-            <option key={o.id} value={o.id}>{o.nombre}</option>
+function BuscadorManual({
+  clientes, onElegir,
+}: {
+  clientes: ClienteParaMatch[]
+  onElegir: (clienteId: number, clienteNombre: string) => void
+}) {
+  const [texto, setTexto] = useState('')
+  const t = texto.trim().toUpperCase()
+  const resultados = t.length >= 2
+    ? clientes.filter((c) => c.nombre.toUpperCase().includes(t)).slice(0, 8)
+    : []
+
+  return (
+    <div style={{ marginTop: 6, position: 'relative' }}>
+      <input
+        type="text"
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        placeholder="Buscar cliente manualmente..."
+        style={{ fontSize: 12, height: 28, borderRadius: 6, border: '1px solid #F0DFB9', padding: '0 8px', width: 220 }}
+      />
+      {resultados.length > 0 && (
+        <div style={{ position: 'absolute', zIndex: 10, top: 30, left: 0, background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', width: 280, maxHeight: 200, overflowY: 'auto' }}>
+          {resultados.map((c) => (
+            <div
+              key={c.id}
+              onClick={() => { onElegir(c.id, c.nombre); setTexto('') }}
+              style={{ padding: '6px 10px', fontSize: 12, cursor: 'pointer', borderBottom: '1px solid #f0f0f0' }}
+            >
+              {c.nombre}
+            </div>
           ))}
-        </select>
+        </div>
       )}
     </div>
   )
