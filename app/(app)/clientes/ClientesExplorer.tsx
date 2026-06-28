@@ -134,6 +134,10 @@ export default function ClientesExplorer({
                 Quitar filtro y ver todos
               </a>
             </div>
+          ) : enBusqueda ? (
+            <a href="/clientes" style={{ fontSize: 12, color: '#0F6E56', textDecoration: 'underline' }}>
+              Quitar filtro y ver todos
+            </a>
           ) : undefined
         }
         accion={<button onClick={abrirNuevo} style={botonPrimario}>+ Nuevo cliente</button>}
