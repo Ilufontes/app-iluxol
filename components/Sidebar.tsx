@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
@@ -33,8 +34,11 @@ export default function Sidebar({ nombreEmpleado }: { nombreEmpleado: string }) 
       display: 'flex',
       flexDirection: 'column',
     }}>
-      <div style={{ fontSize: 18, fontWeight: 500, padding: '0 0.5rem', marginBottom: '2rem' }}>
-        Iluxol
+      <div style={{
+        background: '#ffffff', borderRadius: 10, padding: '8px 12px',
+        display: 'inline-flex', alignItems: 'center', marginBottom: '2rem', width: 'fit-content',
+      }}>
+        <Image src="/logo-iluxol-nuevo.png" alt="Iluxol" width={120} height={56} style={{ height: 28, width: 'auto' }} priority />
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
