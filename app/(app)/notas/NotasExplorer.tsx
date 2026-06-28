@@ -8,6 +8,7 @@ import {
   crearNota,
   actualizarNota,
 } from './actions'
+import CabeceraSeccion from '@/components/CabeceraSeccion'
 
 type Opcion = { id: number; nombre: string }
 
@@ -76,13 +77,12 @@ export default function NotasExplorer({
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 500, margin: 0, color: '#1c2230' }}>Notas</h1>
-          <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>{notas.length} notas registradas</p>
-        </div>
-        <button onClick={abrirNueva} style={botonPrimario}>+ Nueva nota</button>
-      </div>
+      <CabeceraSeccion
+        color="azul"
+        titulo="Notas"
+        subtitulo={`${notas.length} notas registradas`}
+        accion={<button onClick={abrirNueva} style={botonPrimario}>+ Nueva nota</button>}
+      />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {notas.length === 0 && (
@@ -389,15 +389,15 @@ function ModalNota({
 
   return (
     <div style={overlayStyle}>
-      <div style={{ ...modalStyle, padding: 0, overflow: 'hidden' }}>
+      <div style={{ ...modalStyle, padding: 0, overflowY: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <div style={{
           background: 'linear-gradient(135deg, #3441E0 0%, #2230B8 100%)',
-          padding: '18px 1.5rem', position: 'relative', marginBottom: 16,
+          padding: '18px 1.5rem', position: 'relative', flexShrink: 0,
         }}>
           <button onClick={onCerrar} style={{ ...botonCerrar, position: 'absolute', top: 12, right: 14, color: '#fff', background: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>×</button>
           <h2 style={{ margin: 0, fontSize: 17, fontWeight: 500, color: '#fff' }}>{esEdicion ? `Editar nota ${notaEditando!.numero_nota ?? notaEditando!.id}` : 'Nueva nota'}</h2>
         </div>
-        <div style={{ padding: '0 1.5rem 1.5rem' }}>
+        <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
 
@@ -638,10 +638,10 @@ function PanelDetalleNota({
 }) {
   return (
     <div style={overlayStyle}>
-      <div style={{ ...modalStyle, width: 480, padding: 0, overflow: 'hidden' }}>
+      <div style={{ ...modalStyle, width: 480, padding: 0, overflowY: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <div style={{
           background: 'linear-gradient(135deg, #3441E0 0%, #2230B8 100%)',
-          padding: '20px 24px', position: 'relative',
+          padding: '20px 24px', position: 'relative', flexShrink: 0,
         }}>
           <button onClick={onCerrar} style={{ ...botonCerrar, position: 'absolute', top: 12, right: 14, color: '#fff', background: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>×</button>
           <h2 style={{ margin: 0, fontSize: 18, fontWeight: 500, color: '#fff' }}>Nota {nota.numero_nota ?? nota.id}</h2>
@@ -650,6 +650,7 @@ function PanelDetalleNota({
           </p>
         </div>
 
+        <div style={{ overflowY: 'auto', flex: 1 }}>
         <div style={{ padding: '8px 24px 0' }}>
           <FilaResumen etiqueta="Cliente" valor={nota.clientes?.nombre} resaltada />
           <FilaResumen
@@ -671,8 +672,9 @@ function PanelDetalleNota({
             <p style={{ fontSize: 13, color: '#1c2230', margin: '0 0 12px', whiteSpace: 'pre-wrap' }}>{nota.observaciones}</p>
           </div>
         )}
+        </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '16px 24px', borderTop: '1px solid #e5e7eb', marginTop: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '16px 24px', borderTop: '1px solid #e5e7eb', flexShrink: 0 }}>
           <button onClick={onEditar} style={botonPrimario}>Editar</button>
           <a
             href={`/notas-imprimir/${nota.id}`}
