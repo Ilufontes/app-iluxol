@@ -3,6 +3,21 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
+export async function obtenerClientePorId(id: number) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('clientes')
+    .select(`
+      id, nombre, telefono, telefono2, email, otros_datos, dni, lpd_firmado,
+      domicilios ( id, direccion, municipio_id, zona, datos_vivienda, municipios ( nombre ) )
+    `)
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) return null
+  return data
+}
+
 export async function buscarClientesGlobal(termino: string) {
   const supabase = await createClient()
   const t = termino.trim()
