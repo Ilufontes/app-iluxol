@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import GestorLista from '@/components/GestorLista'
+import CabeceraSeccion from '@/components/CabeceraSeccion'
 
 const PESTAÑAS = [
   { tabla: 'tipo_notas' as const, etiqueta: 'Tipo de nota', placeholder: 'Ej: REPARACION MOSQUITERA' },
@@ -24,12 +25,11 @@ export default async function AjustesPage({
 
   return (
     <div>
-      <h1 style={{ fontSize: 22, fontWeight: 500, margin: '0 0 4px', color: '#1c2230' }}>
-        Ajustes
-      </h1>
-      <p style={{ fontSize: 14, color: '#6b7280', margin: '0 0 24px' }}>
-        Activa o desactiva las opciones de los desplegables. Desactivar no borra nada ni afecta a notas ya creadas.
-      </p>
+      <CabeceraSeccion
+        color="gris"
+        titulo="Ajustes"
+        subtitulo="Activa o desactiva las opciones de los desplegables. Desactivar no borra nada ni afecta a notas ya creadas."
+      />
 
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '1px solid #e5e7eb' }}>
         {PESTAÑAS.map((p) => (
@@ -40,8 +40,8 @@ export default async function AjustesPage({
               padding: '8px 14px',
               fontSize: 14,
               textDecoration: 'none',
-              color: p.tabla === pestañaActiva.tabla ? '#2563eb' : '#374151',
-              borderBottom: p.tabla === pestañaActiva.tabla ? '2px solid #2563eb' : '2px solid transparent',
+              color: p.tabla === pestañaActiva.tabla ? '#1c2230' : '#374151',
+              borderBottom: p.tabla === pestañaActiva.tabla ? '2px solid #1c2230' : '2px solid transparent',
               fontWeight: p.tabla === pestañaActiva.tabla ? 500 : 400,
             }}
           >
