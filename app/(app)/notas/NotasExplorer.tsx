@@ -584,9 +584,12 @@ function formatearFechaDetalle(iso: string | null) {
   return `${d}/${m}/${y}`
 }
 
-function FilaResumen({ etiqueta, valor }: { etiqueta: string; valor: React.ReactNode }) {
+function FilaResumen({ etiqueta, valor, resaltada }: { etiqueta: string; valor: React.ReactNode; resaltada?: boolean }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f0f0f0', fontSize: 13 }}>
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', padding: '10px 8px', borderBottom: '1px solid #EEF0FB',
+      fontSize: 13, background: resaltada ? '#F6F7FE' : 'transparent', borderRadius: 6,
+    }}>
       <span style={{ color: '#6b7280' }}>{etiqueta}</span>
       <span style={{ color: '#1c2230', fontWeight: 500, textAlign: 'right' }}>{valor || '—'}</span>
     </div>
@@ -604,38 +607,42 @@ function PanelDetalleNota({
 }) {
   return (
     <div style={overlayStyle}>
-      <div style={{ ...modalStyle, width: 480 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 500 }}>Nota {nota.numero_nota ?? nota.id}</h2>
-          <button onClick={onCerrar} style={botonCerrar}>×</button>
+      <div style={{ ...modalStyle, width: 480, padding: 0, overflow: 'hidden' }}>
+        <div style={{
+          background: 'linear-gradient(135deg, #3441E0 0%, #2230B8 100%)',
+          padding: '20px 24px', position: 'relative',
+        }}>
+          <button onClick={onCerrar} style={{ ...botonCerrar, position: 'absolute', top: 12, right: 14, color: '#fff', background: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>×</button>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 500, color: '#fff' }}>Nota {nota.numero_nota ?? nota.id}</h2>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)', margin: '4px 0 0', letterSpacing: '0.5px' }}>
+            {nota.tipo_notas?.nombre ?? 'Sin tipo'}
+          </p>
         </div>
-        <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 16px' }}>
-          {nota.tipo_notas?.nombre ?? 'Sin tipo'}
-        </p>
 
-        <div>
-          <FilaResumen etiqueta="Cliente" valor={nota.clientes?.nombre} />
+        <div style={{ padding: '8px 24px 0' }}>
+          <FilaResumen etiqueta="Cliente" valor={nota.clientes?.nombre} resaltada />
           <FilaResumen
             etiqueta="Domicilio"
             valor={nota.domicilios ? `${nota.domicilios.direccion} — ${nota.domicilios.municipios?.nombre ?? ''}` : '—'}
           />
-          <FilaResumen etiqueta="Asignada" valor={nota.asignados?.nombre} />
+          <FilaResumen etiqueta="Asignada" valor={nota.asignados?.nombre} resaltada />
           <FilaResumen etiqueta="Llevar" valor={nota.llevar_opciones?.nombre} />
           <FilaResumen
             etiqueta="Fecha cita"
             valor={`${formatearFechaDetalle(nota.dia_cita)}${nota.hora_cita ? ' · ' + nota.hora_cita.slice(0, 5) : ''}`}
+            resaltada
           />
         </div>
 
         {nota.observaciones && (
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e5e7eb' }}>
+          <div style={{ margin: '0 24px', paddingTop: 12, borderTop: '1px solid #e5e7eb' }}>
             <p style={{ fontSize: 12, color: '#6b7280', margin: '0 0 4px' }}>Observaciones</p>
-            <p style={{ fontSize: 13, color: '#1c2230', margin: 0, whiteSpace: 'pre-wrap' }}>{nota.observaciones}</p>
+            <p style={{ fontSize: 13, color: '#1c2230', margin: '0 0 12px', whiteSpace: 'pre-wrap' }}>{nota.observaciones}</p>
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20, borderTop: '1px solid #e5e7eb', paddingTop: 16 }}>
-          <button onClick={onEditar} style={botonSecundario}>Editar</button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '16px 24px', borderTop: '1px solid #e5e7eb', marginTop: 8 }}>
+          <button onClick={onEditar} style={botonEditarDetalle}>Editar</button>
           <a
             href={`/notas-imprimir/${nota.id}`}
             target="_blank"
@@ -663,7 +670,10 @@ const inputBase: React.CSSProperties = {
   width: '100%', height: 36, borderRadius: 8, border: '1px solid #d1d5db', padding: '0 10px', fontSize: 13, boxSizing: 'border-box',
 }
 const botonPrimario: React.CSSProperties = {
-  height: 36, padding: '0 16px', borderRadius: 8, border: 'none', background: '#2563eb', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+  height: 36, padding: '0 16px', borderRadius: 8, border: 'none', background: '#3441E0', color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+}
+const botonEditarDetalle: React.CSSProperties = {
+  height: 36, padding: '0 16px', borderRadius: 8, border: '1px solid #3441E0', background: '#fff', color: '#3441E0', fontSize: 13, fontWeight: 500, cursor: 'pointer',
 }
 const botonSecundario: React.CSSProperties = {
   height: 30, padding: '0 12px', borderRadius: 8, border: '1px solid #d1d5db', background: '#fff', fontSize: 12, cursor: 'pointer',
