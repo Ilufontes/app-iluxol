@@ -53,6 +53,7 @@ export default function NotasExplorer({
   totalPaginas,
   totalNotas,
   filtroFecha,
+  filtroClienteNombre,
 }: {
   notasIniciales: NotaListado[]
   tiposNota: Opcion[]
@@ -63,6 +64,7 @@ export default function NotasExplorer({
   totalPaginas: number
   totalNotas: number
   filtroFecha?: string | null
+  filtroClienteNombre?: string | null
 }) {
   const [notas, setNotas] = useState<NotaListado[]>(notasIniciales)
   const [modalAbierto, setModalAbierto] = useState(false)
@@ -143,14 +145,16 @@ export default function NotasExplorer({
         color="azul"
         titulo="Notas"
         subtitulo={
-          filtroFecha
+          filtroClienteNombre
+            ? `Mostrando ${totalNotas} ${totalNotas === 1 ? 'nota' : 'notas'} de ${filtroClienteNombre}`
+            : filtroFecha
             ? `Mostrando ${totalNotas} ${totalNotas === 1 ? 'nota' : 'notas'} con cita el ${formatearFechaDetalle(filtroFecha)}`
             : `${totalNotas} notas registradas — página ${paginaActual} de ${totalPaginas}`
         }
         extra={
-          filtroFecha ? (
+          filtroClienteNombre || filtroFecha ? (
             <a href="/notas" style={{ fontSize: 12, color: '#2230B8', textDecoration: 'underline' }}>
-              Quitar filtro de fecha y ver todas
+              Quitar filtro y ver todas
             </a>
           ) : (
             <input
@@ -491,7 +495,21 @@ function ModalNota({
           background: 'linear-gradient(135deg, #3441E0 0%, #2230B8 100%)',
           padding: '18px 1.5rem', position: 'relative', flexShrink: 0,
         }}>
-          <button onClick={onCerrar} style={{ ...botonCerrar, position: 'absolute', top: 12, right: 14, color: '#fff', background: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>×</button>
+          <div style={{ position: 'absolute', top: 12, right: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+            {esEdicion && notaEditando?.cliente_id && (
+              <a
+                href={`/clientes?cliente=${notaEditando.cliente_id}`}
+                style={{
+                  height: 26, padding: '0 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.4)',
+                  background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 12,
+                  display: 'inline-flex', alignItems: 'center', textDecoration: 'none',
+                }}
+              >
+                Ver cliente
+              </a>
+            )}
+            <button onClick={onCerrar} style={{ ...botonCerrar, color: '#fff', background: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>×</button>
+          </div>
           <h2 style={{ margin: 0, fontSize: 17, fontWeight: 500, color: '#fff' }}>{esEdicion ? `Editar nota ${notaEditando!.numero_nota ?? notaEditando!.id}` : 'Nueva nota'}</h2>
         </div>
         <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1 }}>
