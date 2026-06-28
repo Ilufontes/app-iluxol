@@ -75,6 +75,11 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
         table.orden td { border: 1.2px solid #1c2230; padding: 6px 12px; font-size: 12.5px; vertical-align: top; }
         td.etiqueta, .etiqueta { font-weight: 600; font-size: 10.5px; background: #eaecef; white-space: nowrap; width: 125px; }
         .cabecera { background: #eceef1; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #1c2230; border-bottom: none; }
+        td.etiqueta, .etiqueta, .cabecera, .titulo-apuntes {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+          color-adjust: exact;
+        }
         .titulo-cabecera { font-size: 20px; font-weight: 300; letter-spacing: 4px; margin: 0; }
         .logo-cabecera { height: 30px; object-fit: contain; }
         .recuadro-apuntes { height: 148mm; }
@@ -160,7 +165,7 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
             </tr>
             <tr>
               <td colSpan={4} style={{ padding: 0 }}>
-                <div style={{
+                <div className="titulo-apuntes" style={{
                   width: '100%', fontWeight: 600, fontSize: '10.5px', background: '#f3f4f6',
                   borderBottom: '1.2px solid #1c2230', padding: '6px 12px', boxSizing: 'border-box',
                 }}>
