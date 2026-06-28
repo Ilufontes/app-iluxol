@@ -3,6 +3,25 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
+export async function buscarClientesGlobal(termino: string) {
+  const supabase = await createClient()
+  const t = termino.trim()
+  if (!t) return []
+
+  const { data, error } = await supabase
+    .from('clientes')
+    .select(`
+      id, nombre, telefono, telefono2, email, otros_datos, dni, lpd_firmado,
+      domicilios ( id, direccion, municipio_id, zona, datos_vivienda, municipios ( nombre ) )
+    `)
+    .or(`nombre.ilike.%${t}%,telefono.ilike.%${t}%,telefono2.ilike.%${t}%,email.ilike.%${t}%`)
+    .order('id', { ascending: false })
+    .limit(100)
+
+  if (error) return []
+  return data
+}
+
 export async function crearCliente(datos: {
   nombre: string
   telefono: string
