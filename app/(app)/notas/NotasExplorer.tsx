@@ -52,6 +52,7 @@ export default function NotasExplorer({
   paginaActual,
   totalPaginas,
   totalNotas,
+  filtroFecha,
 }: {
   notasIniciales: NotaListado[]
   tiposNota: Opcion[]
@@ -61,6 +62,7 @@ export default function NotasExplorer({
   paginaActual: number
   totalPaginas: number
   totalNotas: number
+  filtroFecha?: string | null
 }) {
   const [notas, setNotas] = useState<NotaListado[]>(notasIniciales)
   const [modalAbierto, setModalAbierto] = useState(false)
@@ -140,19 +142,29 @@ export default function NotasExplorer({
       <CabeceraSeccion
         color="azul"
         titulo="Notas"
-        subtitulo={`${totalNotas} notas registradas — página ${paginaActual} de ${totalPaginas}`}
+        subtitulo={
+          filtroFecha
+            ? `Mostrando ${totalNotas} ${totalNotas === 1 ? 'nota' : 'notas'} con cita el ${formatearFechaDetalle(filtroFecha)}`
+            : `${totalNotas} notas registradas — página ${paginaActual} de ${totalPaginas}`
+        }
         extra={
-          <input
-            type="text"
-            inputMode="numeric"
-            value={busquedaNumero}
-            onChange={(e) => setBusquedaNumero(e.target.value.replace(/[^0-9]/g, ''))}
-            placeholder="Buscar por número de nota..."
-            style={{
-              width: '100%', height: 36, borderRadius: 8, border: '1px solid #d6daf8',
-              padding: '0 12px', fontSize: 13, boxSizing: 'border-box', background: '#fff',
-            }}
-          />
+          filtroFecha ? (
+            <a href="/notas" style={{ fontSize: 12, color: '#2230B8', textDecoration: 'underline' }}>
+              Quitar filtro de fecha y ver todas
+            </a>
+          ) : (
+            <input
+              type="text"
+              inputMode="numeric"
+              value={busquedaNumero}
+              onChange={(e) => setBusquedaNumero(e.target.value.replace(/[^0-9]/g, ''))}
+              placeholder="Buscar por número de nota..."
+              style={{
+                width: '100%', height: 36, borderRadius: 8, border: '1px solid #d6daf8',
+                padding: '0 12px', fontSize: 13, boxSizing: 'border-box', background: '#fff',
+              }}
+            />
+          )
         }
         accion={<button onClick={abrirNueva} style={botonPrimario}>+ Nueva nota</button>}
       />
