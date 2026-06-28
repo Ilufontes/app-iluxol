@@ -496,9 +496,9 @@ function ModalNota({
           padding: '18px 1.5rem', position: 'relative', flexShrink: 0,
         }}>
           <div style={{ position: 'absolute', top: 12, right: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-            {esEdicion && notaEditando?.cliente_id && (
+            {esEdicion && notaEditando?.clientes?.nombre && (
               <a
-                href={`/clientes?cliente=${notaEditando.cliente_id}`}
+                href={`/clientes?buscar=${encodeURIComponent(notaEditando.clientes.nombre)}`}
                 style={{
                   height: 26, padding: '0 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.4)',
                   background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 12,
@@ -759,9 +759,9 @@ function PanelDetalleNota({
           padding: '20px 24px', position: 'relative', flexShrink: 0,
         }}>
           <div style={{ position: 'absolute', top: 12, right: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
-            {nota.cliente_id && (
+            {nota.clientes?.nombre && (
               <a
-                href={`/clientes?cliente=${nota.cliente_id}`}
+                href={`/clientes?buscar=${encodeURIComponent(nota.clientes.nombre)}`}
                 style={{
                   height: 26, padding: '0 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.4)',
                   background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 12,
