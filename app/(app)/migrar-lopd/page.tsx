@@ -4,10 +4,9 @@ import { useState, useRef } from 'react'
 import CabeceraSeccion from '@/components/CabeceraSeccion'
 import {
   cargarClientesParaMatch,
-  emparejarNombreArchivo,
   subirDocumentoLopdMasivo,
-  type ClienteParaMatch,
 } from './actions'
+import { emparejarNombreArchivo, type ClienteParaMatch } from './emparejar'
 
 type EstadoArchivo = 'pendiente' | 'subiendo' | 'subido' | 'sin_coincidencia' | 'multiple' | 'error'
 
@@ -36,7 +35,7 @@ export default function MigrarLopdPage() {
 
     const resultado: ItemArchivo[] = []
     for (const archivo of pdfs) {
-      const match = await emparejarNombreArchivo(archivo.name, clientes)
+      const match = emparejarNombreArchivo(archivo.name, clientes)
       if (match.tipo === 'exacto') {
         resultado.push({ archivo, estado: 'pendiente', clienteId: match.clienteId, clienteNombre: match.clienteNombre })
       } else if (match.tipo === 'multiple') {
