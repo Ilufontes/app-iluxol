@@ -77,7 +77,7 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
         .cabecera { background: #eceef1; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #1c2230; border-bottom: none; }
         .titulo-cabecera { font-size: 20px; font-weight: 300; letter-spacing: 4px; margin: 0; }
         .logo-cabecera { height: 30px; object-fit: contain; }
-        .recuadro-apuntes { height: 165mm; }
+        .recuadro-apuntes { height: 148mm; }
         @media print {
           .barra-acciones { display: none; }
           .pagina-imprimir { width: 100%; margin: 0; padding: 0; }
