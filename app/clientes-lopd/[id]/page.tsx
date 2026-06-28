@@ -54,6 +54,12 @@ export default async function LopdPage({ params }: { params: Promise<{ id: strin
         table.datos-cliente td:last-child { border-bottom: 1px solid #d1d5db; }
         .firma-fecha { display: flex; justify-content: space-between; margin-top: 48px; }
         .firma-fecha .linea { margin-top: 28px; border-top: 1px solid #9ca3af; width: 180px; }
+        .titulo-registro { font-size: 18px; font-weight: 600; margin: 0 0 4px; }
+        .subtitulo-registro { font-size: 13px; font-weight: 600; text-decoration: underline; margin: 0 0 14px; }
+        table.registro-tratamiento { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        table.registro-tratamiento td { border: 1px solid #d1d5db; padding: 10px 12px; vertical-align: top; font-size: 12.5px; }
+        table.registro-tratamiento td:first-child { width: 220px; font-weight: 500; background: #f3f4f6; }
+        .salto-pagina { page-break-before: always; }
         @media print {
           .barra-acciones { display: none; }
           .pagina-lopd { width: 100%; margin: 0; }
@@ -69,6 +75,67 @@ export default async function LopdPage({ params }: { params: Promise<{ id: strin
           <button id="btn-imprimir-lopd">Imprimir / Guardar PDF</button>
         </div>
 
+        {/* Página 1: información genérica del registro de actividad de tratamiento.
+            Es siempre el mismo texto para todos los clientes, no depende de ningún dato variable. */}
+        <h1 className="titulo-registro">TRATAMIENTO DE DATOS PERSONALES DE CLIENTE</h1>
+        <p className="subtitulo-registro">REGISTRO ACTIVIDAD DE TRATAMIENTO</p>
+
+        <p>
+          De conformidad con el Reglamento (UE) 2016/679 Del Parlamento Europeo y del Consejo de 27 de
+          abril de 2016 y la Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos Personales y
+          garantía de los derechos digitales, le informamos de que los datos de carácter personal facilitados
+          en el presente serán incorporados en un fichero titularidad y responsabilidad de ALUMINIOS ILUXOL SLU
+        </p>
+
+        <table className="registro-tratamiento">
+          <tbody>
+            <tr>
+              <td>RESPONSABLE DEL TRATAMIENTO DE DATOS PERSONALES</td>
+              <td>
+                ALUMINIOS ILUXOL SLU<br /><br />
+                C/HOMERO 31, TELDE (LAS PALMAS, CP. 35219)<br /><br />
+                info@iluxol.es
+              </td>
+            </tr>
+            <tr>
+              <td>FINALIDAD DEL TRATAMIENTO</td>
+              <td>
+                Tratamiento necesario para el desarrollo y ejecución de una relación jurídica entre el
+                responsable y el afectado, o para la satisfacción de un interés legítimo del responsable
+                siempre que dicho interés no prevalezca sobre los derechos y libertades de los afectados,
+                en particular cuando éstos sean niños.
+              </td>
+            </tr>
+            <tr>
+              <td>CATEGORÍA DE INTERESADOS</td>
+              <td>Clientes. Usuarios que desean contratar los servicios del responsable, para lo cual, cede sus datos personales</td>
+            </tr>
+            <tr>
+              <td>CATEGORÍA DE DATOS</td>
+              <td>Los necesarios para el mantenimiento de la relación. Se tratarán datos como: nombre, apellidos, dirección, teléfono de contacto, correo electrónico.</td>
+            </tr>
+            <tr>
+              <td>DESTINATARIOS</td>
+              <td>Administración Tributaria. Cuerpos y fuerzas de seguridad del Estado. Bancos y entidades financieras. Otros destinatarios.</td>
+            </tr>
+            <tr>
+              <td>TRANSFERENCIAS DE DATOS CON CARÁCTER INTERNACIONAL</td>
+              <td>No realizan transferencias de datos personales en el ámbito internacional</td>
+            </tr>
+            <tr>
+              <td>PLAZO DE CONSERVACIÓN</td>
+              <td>
+                Se conservarán los datos durante el tiempo necesario para cumplir con la finalidad para la
+                que se recabaron. Una vez desaparezcan las finalidades para las que han sido recabados los
+                datos inicialmente, estos se conservarán los términos previstos en la legislación para el
+                cumplimiento necesario respecto a la prescripción de responsabilidades
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Página 2: la autorización concreta de este cliente, con sus datos reales. */}
+        <div className="salto-pagina">
         <div className="logo-lopd">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-iluxol.png" alt="Iluxol" />
@@ -127,6 +194,7 @@ export default async function LopdPage({ params }: { params: Promise<{ id: strin
             <p style={{ margin: 0, color: '#6b7280' }}>Firma cliente</p>
             <div className="linea" />
           </div>
+        </div>
         </div>
       </div>
 
