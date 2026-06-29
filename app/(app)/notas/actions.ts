@@ -13,7 +13,7 @@ export async function buscarNotaPorNumero(numero: number) {
       clientes ( id, nombre, telefono, telefono2, email ),
       domicilios ( id, direccion, zona, municipio_id, municipios ( nombre ) ),
       tipo_notas ( nombre ),
-      asignados ( nombre ),
+      asignados ( nombre, color ),
       llevar_opciones ( nombre )
     `)
     .eq('numero_nota', numero)
@@ -100,7 +100,7 @@ export async function crearNota(datos: {
       clientes ( id, nombre, telefono, telefono2, email ),
       domicilios ( id, direccion, zona, municipios ( nombre ) ),
       tipo_notas ( nombre ),
-      asignados ( nombre ),
+      asignados ( nombre, color ),
       llevar_opciones ( nombre )
     `)
     .single()
@@ -137,7 +137,7 @@ export async function actualizarNota(
       clientes ( id, nombre, telefono, telefono2, email ),
       domicilios ( id, direccion, zona, municipios ( nombre ) ),
       tipo_notas ( nombre ),
-      asignados ( nombre ),
+      asignados ( nombre, color ),
       llevar_opciones ( nombre )
     `)
     .single()
