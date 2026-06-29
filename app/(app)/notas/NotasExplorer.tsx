@@ -628,7 +628,7 @@ function ModalNota({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #cfe8db', borderRadius: 8, padding: '8px 10px', background: '#fff' }}>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 500 }}>{clienteSeleccionado.nombre}</div>
-                  <div style={{ fontSize: 12, color: '#9ca3af' }}>{clienteSeleccionado.telefono || 'Sin teléfono'}</div>
+                  <div style={{ fontSize: 12, color: '#9ca3af' }}>{clienteSeleccionado.telefono ? formatearTelefono(clienteSeleccionado.telefono) : 'Sin teléfono'}</div>
                 </div>
                 <button
                   onClick={() => { setClienteSeleccionado(null); setDomicilioId(''); }}
@@ -654,7 +654,7 @@ function ModalNota({
                         onClick={() => seleccionarCliente(c)}
                         style={{ padding: '8px 10px', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid #f0f0f0' }}
                       >
-                        <strong>{c.nombre}</strong> · {c.telefono}
+                        <strong>{c.nombre}</strong> · {c.telefono ? formatearTelefono(c.telefono) : 'Sin teléfono'}
                       </div>
                     ))}
                   </div>
