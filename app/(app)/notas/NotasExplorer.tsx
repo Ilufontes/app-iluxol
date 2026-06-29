@@ -55,6 +55,7 @@ export default function NotasExplorer({
   totalNotas,
   filtroFecha,
   filtroClienteNombre,
+  filtroAsignadoId,
 }: {
   notasIniciales: NotaListado[]
   tiposNota: Opcion[]
@@ -66,6 +67,7 @@ export default function NotasExplorer({
   totalNotas: number
   filtroFecha?: string | null
   filtroClienteNombre?: string | null
+  filtroAsignadoId?: number | null
 }) {
   const [notas, setNotas] = useState<NotaListado[]>(notasIniciales)
   const [modalAbierto, setModalAbierto] = useState(false)
@@ -173,6 +175,8 @@ export default function NotasExplorer({
     setModalAbierto(false)
   }
 
+  const asignadoActivo = asignados.find((a) => a.id === filtroAsignadoId)
+
   return (
     <div>
       <CabeceraSeccion
@@ -183,6 +187,8 @@ export default function NotasExplorer({
             ? `Mostrando ${totalNotas} ${totalNotas === 1 ? 'nota' : 'notas'} de ${filtroClienteNombre}`
             : filtroFecha
             ? `Mostrando ${totalNotas} ${totalNotas === 1 ? 'nota' : 'notas'} con cita el ${formatearFechaDetalle(filtroFecha)}`
+            : asignadoActivo
+            ? `Mostrando ${totalNotas} ${totalNotas === 1 ? 'nota' : 'notas'} de ${asignadoActivo.nombre}`
             : `${totalNotas} notas registradas — página ${paginaActual} de ${totalPaginas}`
         }
         extra={
@@ -202,18 +208,39 @@ export default function NotasExplorer({
             <a href="/notas" style={{ fontSize: 12, color: '#2230B8', textDecoration: 'underline' }}>
               Quitar filtro y ver todas
             </a>
+          ) : asignadoActivo ? (
+            <a href="/notas" style={{ fontSize: 12, color: '#2230B8', textDecoration: 'underline' }}>
+              Quitar filtro y ver todas
+            </a>
           ) : (
-            <input
-              type="text"
-              inputMode="numeric"
-              value={busquedaNumero}
-              onChange={(e) => setBusquedaNumero(e.target.value.replace(/[^0-9]/g, ''))}
-              placeholder="Buscar por número de nota..."
-              style={{
-                width: '100%', height: 36, borderRadius: 8, border: '1px solid #d6daf8',
-                padding: '0 12px', fontSize: 13, boxSizing: 'border-box', background: '#fff',
-              }}
-            />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={busquedaNumero}
+                onChange={(e) => setBusquedaNumero(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder="Buscar por número de nota..."
+                style={{
+                  flex: 1, height: 36, borderRadius: 8, border: '1px solid #d6daf8',
+                  padding: '0 12px', fontSize: 13, boxSizing: 'border-box', background: '#fff',
+                }}
+              />
+              <select
+                defaultValue=""
+                onChange={(e) => {
+                  if (e.target.value) window.location.href = `/notas?asignado=${e.target.value}`
+                }}
+                style={{
+                  height: 36, borderRadius: 8, border: '1px solid #d6daf8',
+                  padding: '0 8px', fontSize: 13, background: '#fff', flexShrink: 0,
+                }}
+              >
+                <option value="">Filtrar por asignado...</option>
+                {asignados.map((a) => (
+                  <option key={a.id} value={a.id}>{a.nombre}</option>
+                ))}
+              </select>
+            </div>
           )
         }
         accion={<button onClick={abrirNueva} style={botonPrimario}>+ Nueva nota</button>}
