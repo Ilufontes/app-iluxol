@@ -32,15 +32,13 @@ export async function comprobarDuplicados(
 
   const telefonosAComprobar = [telefono.trim(), telefono2.trim()].filter(Boolean)
   for (const tel of telefonosAComprobar) {
-    let query = supabase
-      .from('clientes')
-      .select('id, nombre, telefono, telefono2')
-      .or(`telefono.eq.${tel},telefono2.eq.${tel}`)
-    if (excluirId) query = query.neq('id', excluirId)
-    const { data } = await query.limit(1).maybeSingle()
-    if (data) {
-      const campo = data.telefono === tel ? 'Teléfono' : 'Teléfono 2'
-      resultado.telefonoDuplicado = { id: data.id, nombre: data.nombre, campo }
+    const { data } = await supabase.rpc('buscar_telefono_duplicado', {
+      telefono_buscado: tel,
+      excluir_id: excluirId ?? null,
+    })
+    const encontrado = Array.isArray(data) ? data[0] : data
+    if (encontrado) {
+      resultado.telefonoDuplicado = { id: encontrado.id, nombre: encontrado.nombre, campo: encontrado.campo }
       break
     }
   }
