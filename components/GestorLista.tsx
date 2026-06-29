@@ -125,7 +125,9 @@ export default function GestorLista({
             Sin valores todavía. Añade el primero arriba.
           </div>
         )}
-        {items.map((item, idx) => (
+        {items.map((item, idx) => {
+          const cercaDelFinal = idx >= items.length - 2
+          return (
           <div
             key={item.id}
             style={{
@@ -165,7 +167,9 @@ export default function GestorLista({
                 />
                 {selectorAbiertoId === item.id && (
                   <div style={{
-                    position: 'absolute', top: 28, right: 0, zIndex: 20, background: '#fff',
+                    position: 'absolute',
+                    ...(cercaDelFinal ? { bottom: 28 } : { top: 28 }),
+                    right: 0, zIndex: 20, background: '#fff',
                     border: '1px solid #e5e7eb', borderRadius: 8, padding: 10,
                     boxShadow: '0 4px 12px rgba(0,0,0,0.08)', width: 168,
                   }}>
@@ -227,7 +231,8 @@ export default function GestorLista({
               />
             </label>
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
