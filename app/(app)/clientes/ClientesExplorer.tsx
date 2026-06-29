@@ -357,10 +357,6 @@ function ModalCliente({
 
   async function handleGuardarCliente() {
     if (!nombre.trim()) return
-    if (avisoTelefono) {
-      setError(`Ese teléfono ya pertenece a ${avisoTelefono.nombre} (${avisoTelefono.campo}). Corrígelo antes de guardar.`)
-      return
-    }
     setGuardando(true)
     setError(null)
     try {
@@ -468,8 +464,8 @@ function ModalCliente({
               </Campo>
             </div>
             {avisoTelefono && (
-              <p style={{ fontSize: 12, color: '#791F1F', margin: '-4px 0 0', background: '#FCEBEB', border: '1px solid #F09595', borderRadius: 6, padding: '6px 10px' }}>
-                Ese teléfono ya pertenece a <strong>{avisoTelefono.nombre}</strong> ({avisoTelefono.campo}). No se podrá guardar mientras coincida.
+              <p style={{ fontSize: 12, color: '#854F0B', margin: '-4px 0 0', background: '#FBF3E6', border: '1px solid #F0DFB9', borderRadius: 6, padding: '6px 10px' }}>
+                Ese teléfono ya está registrado a <strong>{avisoTelefono.nombre}</strong> ({avisoTelefono.campo}). Puedes guardar igual si es un familiar o convive con esa persona.
               </p>
             )}
             <Campo etiqueta="Email">
@@ -539,7 +535,7 @@ function ModalCliente({
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '16px 1.5rem', borderTop: '1px solid #e5e7eb', flexShrink: 0 }}>
             <button onClick={onCerrar} style={botonSecundario}>Cerrar</button>
-            <button onClick={handleGuardarCliente} disabled={guardando || !!avisoTelefono} style={botonPrimario}>
+            <button onClick={handleGuardarCliente} disabled={guardando} style={botonPrimario}>
               {guardando ? 'Guardando...' : 'Guardar cliente'}
             </button>
           </div>
