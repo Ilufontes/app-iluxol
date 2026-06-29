@@ -12,6 +12,19 @@ function formatearFecha(iso: string | null) {
   return `${d}/${m}/${y}`
 }
 
+// Calcula cuántas líneas ocupará aproximadamente el texto de observaciones,
+// teniendo en cuenta tanto los saltos de línea reales como el ajuste de línea
+// automático del navegador cuando una frase es más larga que el ancho de la celda.
+function contarLineasAproximadas(texto: string, caracteresPorLinea: number): number {
+  if (!texto) return 1
+  const lineas = texto.split('\n')
+  let total = 0
+  for (const linea of lineas) {
+    total += Math.max(1, Math.ceil(linea.length / caracteresPorLinea))
+  }
+  return total
+}
+
 async function cargarNota(id: string) {
   const supabase = await createClient()
   const { data: notaCruda, error } = await supabase
@@ -58,6 +71,29 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
 
   if (!nota) notFound()
 
+  // El nombre "M.B" se usa como código interno para notas que no deben llevar
+  // ningún nombre de asignado visible en el documento impreso.
+  const nombreAsignado = nota.asignados?.nombre ?? ''
+  const mostrarAsignado = nombreAsignado.trim().toUpperCase() !== 'M.B'
+
+  // Altura adaptable de Observaciones: una línea normal son unos 90 caracteres
+  // con esta fuente y ancho de celda. Si el texto necesita más de 3 líneas,
+  // el recuadro crece, y le restamos ese exceso al recuadro de Apuntes y
+  // Mediciones para que la orden de trabajo siga cabiendo en una sola hoja A4.
+  const CARACTERES_POR_LINEA = 90
+  const ALTURA_LINEA_MM = 4.2
+  const ALTURA_BASE_MM = 17
+  const ALTURA_MAXIMA_OBSERVACIONES_MM = 60 // tope para no comerse demasiado del recuadro de apuntes
+
+  const lineasObservaciones = contarLineasAproximadas(nota.observaciones ?? '', CARACTERES_POR_LINEA)
+  const alturaObservacionesMm = Math.min(
+    ALTURA_MAXIMA_OBSERVACIONES_MM,
+    Math.max(ALTURA_BASE_MM, lineasObservaciones * ALTURA_LINEA_MM + 6)
+  )
+  const exceso = Math.max(0, alturaObservacionesMm - ALTURA_BASE_MM)
+  const ALTURA_RECUADRO_APUNTES_BASE_MM = 148
+  const alturaRecuadroApuntesMm = ALTURA_RECUADRO_APUNTES_BASE_MM - exceso
+
   return (
     <>
       <style>{`
@@ -82,7 +118,6 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
         }
         .titulo-cabecera { font-size: 20px; font-weight: 300; letter-spacing: 4px; margin: 0; }
         .logo-cabecera { height: 30px; object-fit: contain; }
-        .recuadro-apuntes { height: 148mm; }
         @media print {
           .barra-acciones { display: none; }
           .pagina-imprimir { width: 100%; margin: 0; padding: 0; }
@@ -144,8 +179,8 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
               <td className="etiqueta" style={{ verticalAlign: 'top' }}>OBSERVACIONES</td>
               <td colSpan={3} style={{ padding: 0 }}>
                 <div style={{
-                  height: '17mm', padding: '6px 12px', fontSize: '12.5px',
-                  whiteSpace: 'pre-wrap', overflow: 'hidden',
+                  minHeight: `${alturaObservacionesMm}mm`, padding: '6px 12px', fontSize: '12.5px',
+                  whiteSpace: 'pre-wrap',
                 }}>
                   {nota.observaciones || '—'}
                 </div>
@@ -161,7 +196,7 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
             </tr>
             <tr>
               <td className="etiqueta">PARA</td>
-              <td colSpan={3}>{nota.asignados?.nombre ?? '—'}</td>
+              <td colSpan={3}>{mostrarAsignado ? (nombreAsignado || '—') : ''}</td>
             </tr>
             <tr>
               <td colSpan={4} style={{ padding: 0 }}>
@@ -171,7 +206,7 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
                 }}>
                   APUNTES Y MEDICIONES
                 </div>
-                <div className="recuadro-apuntes" />
+                <div style={{ height: `${alturaRecuadroApuntesMm}mm` }} />
               </td>
             </tr>
           </tbody>
