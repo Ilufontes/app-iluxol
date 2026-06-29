@@ -7,7 +7,19 @@ export type ItemLista = {
   id: number
   nombre: string
   activo: boolean
+  color?: string | null
 }
+
+const PALETA_COLORES = [
+  { nombre: 'Azul', valor: '#3441E0' },
+  { nombre: 'Verde', valor: '#1D9E75' },
+  { nombre: 'Naranja', valor: '#BA7517' },
+  { nombre: 'Morado', valor: '#7F77DD' },
+  { nombre: 'Rojo', valor: '#D63B3B' },
+  { nombre: 'Rosa', valor: '#D6418F' },
+  { nombre: 'Turquesa', valor: '#1B9E9E' },
+  { nombre: 'Marrón', valor: '#8B5E34' },
+]
 
 export default function GestorLista({
   tabla,
@@ -21,7 +33,9 @@ export default function GestorLista({
   const [items, setItems] = useState<ItemLista[]>(itemsIniciales)
   const [nuevoValor, setNuevoValor] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [selectorAbiertoId, setSelectorAbiertoId] = useState<number | null>(null)
   const supabase = createClient()
+  const conColor = tabla === 'asignados'
 
   async function anadir() {
     const valor = nuevoValor.trim().toUpperCase()
@@ -31,7 +45,7 @@ export default function GestorLista({
     const { data, error } = await supabase
       .from(tabla)
       .insert({ nombre: valor })
-      .select('id, nombre, activo')
+      .select(conColor ? 'id, nombre, activo, color' : 'id, nombre, activo')
       .single()
 
     if (error) {
@@ -68,6 +82,18 @@ export default function GestorLista({
     if (error) return
 
     setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, nombre: valor } : i)))
+  }
+
+  async function cambiarColor(item: ItemLista, color: string | null) {
+    const { error } = await supabase
+      .from(tabla)
+      .update({ color })
+      .eq('id', item.id)
+
+    if (error) return
+
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, color } : i)))
+    setSelectorAbiertoId(null)
   }
 
   return (
@@ -127,6 +153,52 @@ export default function GestorLista({
                 color: item.activo ? '#1c2230' : '#9ca3af',
               }}
             />
+
+            {conColor && (
+              <div style={{ position: 'relative', marginLeft: 8, flexShrink: 0 }}>
+                <button
+                  onClick={() => setSelectorAbiertoId(selectorAbiertoId === item.id ? null : item.id)}
+                  title="Color de las notas de este asignado"
+                  style={{
+                    width: 22, height: 22, borderRadius: '50%', cursor: 'pointer',
+                    border: item.color ? '1px solid rgba(0,0,0,0.1)' : '1px dashed #d1d5db',
+                    background: item.color ?? '#fff',
+                  }}
+                />
+                {selectorAbiertoId === item.id && (
+                  <div style={{
+                    position: 'absolute', top: 28, right: 0, zIndex: 20, background: '#fff',
+                    border: '1px solid #e5e7eb', borderRadius: 8, padding: 10,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)', width: 168,
+                  }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 8 }}>
+                      {PALETA_COLORES.map((c) => (
+                        <button
+                          key={c.valor}
+                          title={c.nombre}
+                          onClick={() => cambiarColor(item, c.valor)}
+                          style={{
+                            width: 28, height: 28, borderRadius: '50%', cursor: 'pointer',
+                            background: c.valor,
+                            border: item.color === c.valor ? '2px solid #1c2230' : '1px solid rgba(0,0,0,0.1)',
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => cambiarColor(item, null)}
+                      style={{
+                        width: '100%', height: 26, borderRadius: 6, border: '1px solid #d1d5db',
+                        background: '#fff', fontSize: 11, color: '#6b7280', cursor: 'pointer',
+                      }}
+                    >
+                      Sin color
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             <label style={{ position: 'relative', width: 36, height: 20, flexShrink: 0, marginLeft: 12, cursor: 'pointer' }}>
               <input
                 type="checkbox"
