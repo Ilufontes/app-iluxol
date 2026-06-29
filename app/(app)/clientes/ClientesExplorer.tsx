@@ -475,7 +475,13 @@ function ModalCliente({
               <input value={dni ?? ''} onChange={(e) => setDni(e.target.value)} placeholder="00000000A" style={inputBase} />
             </Campo>
             <Campo etiqueta="Otros datos">
-              <input value={otros ?? ''} onChange={(e) => setOtros(e.target.value)} placeholder="Notas adicionales" style={inputBase} />
+              <textarea
+                value={otros ?? ''}
+                onChange={(e) => setOtros(e.target.value)}
+                rows={3}
+                placeholder="Notas adicionales"
+                style={{ ...inputBase, height: 'auto', padding: 8, resize: 'vertical' }}
+              />
             </Campo>
 
             <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
