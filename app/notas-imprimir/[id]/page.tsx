@@ -47,9 +47,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const nota = await cargarNota(id)
   if (!nota) return { title: 'Orden de trabajo - Iluxol' }
 
-  const numero = String(nota.numero_nota ?? nota.id).padStart(4, '0')
+  const numero = nota.numero_nota ?? nota.id
   const nombreCliente = nota.clientes?.nombre ?? 'Cliente'
-  return { title: `Not${numero} ${nombreCliente}` }
+  return { title: `${numero} - ${nombreCliente}` }
 }
 
 export default async function ImprimirNotaPage({ params }: { params: Promise<{ id: string }> }) {
@@ -93,7 +93,7 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
       <div className="pagina-imprimir">
         <div className="barra-acciones">
           <span style={{ fontSize: 12, color: '#9ca3af', alignSelf: 'center' }}>
-            Al imprimir, desactiva &quot;Encabezados y pies de página&quot; en las opciones del navegador
+            Al guardar, desactiva &quot;Encabezados y pies de página&quot;. El nombre del archivo ya viene puesto: solo elige la carpeta.
           </span>
           <button id="btn-imprimir">Imprimir / Guardar PDF</button>
         </div>
