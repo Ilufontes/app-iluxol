@@ -3,6 +3,51 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
+export type AvisoDuplicado = {
+  nombreDuplicado: { id: number; nombre: string } | null
+  telefonoDuplicado: { id: number; nombre: string; campo: string } | null
+}
+
+// Comprueba si el nombre o el teléfono ya pertenecen a otro cliente.
+// - Nombre: solo informativo (se puede guardar igual).
+// - Teléfono/Teléfono2: se compara contra el teléfono Y el teléfono2 de
+//   cualquier otro cliente — un mismo número no puede repetirse en ningún
+//   campo de teléfono de ningún otro cliente.
+export async function comprobarDuplicados(
+  nombre: string,
+  telefono: string,
+  telefono2: string,
+  excluirId?: number
+) {
+  const supabase = await createClient()
+  const resultado: AvisoDuplicado = { nombreDuplicado: null, telefonoDuplicado: null }
+
+  const nombreNormalizado = nombre.trim()
+  if (nombreNormalizado) {
+    let query = supabase.from('clientes').select('id, nombre').ilike('nombre', nombreNormalizado)
+    if (excluirId) query = query.neq('id', excluirId)
+    const { data } = await query.limit(1).maybeSingle()
+    if (data) resultado.nombreDuplicado = data
+  }
+
+  const telefonosAComprobar = [telefono.trim(), telefono2.trim()].filter(Boolean)
+  for (const tel of telefonosAComprobar) {
+    let query = supabase
+      .from('clientes')
+      .select('id, nombre, telefono, telefono2')
+      .or(`telefono.eq.${tel},telefono2.eq.${tel}`)
+    if (excluirId) query = query.neq('id', excluirId)
+    const { data } = await query.limit(1).maybeSingle()
+    if (data) {
+      const campo = data.telefono === tel ? 'Teléfono' : 'Teléfono 2'
+      resultado.telefonoDuplicado = { id: data.id, nombre: data.nombre, campo }
+      break
+    }
+  }
+
+  return resultado
+}
+
 export async function obtenerClientePorId(id: number) {
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -44,6 +89,11 @@ export async function crearCliente(datos: {
   email: string
   otros_datos: string
 }) {
+  const { telefonoDuplicado } = await comprobarDuplicados(datos.nombre, datos.telefono, datos.telefono2)
+  if (telefonoDuplicado) {
+    throw new Error(`Ese teléfono ya pertenece a ${telefonoDuplicado.nombre} (${telefonoDuplicado.campo}).`)
+  }
+
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('clientes')
@@ -69,6 +119,11 @@ export async function actualizarCliente(
     lpd_firmado: boolean
   }
 ) {
+  const { telefonoDuplicado } = await comprobarDuplicados(datos.nombre, datos.telefono, datos.telefono2, id)
+  if (telefonoDuplicado) {
+    throw new Error(`Ese teléfono ya pertenece a ${telefonoDuplicado.nombre} (${telefonoDuplicado.campo}).`)
+  }
+
   const supabase = await createClient()
   const { error } = await supabase
     .from('clientes')
