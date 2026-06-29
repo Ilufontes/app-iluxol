@@ -26,7 +26,7 @@ export default async function NotasPage({
       clientes ( id, nombre, telefono, telefono2, email ),
       domicilios ( id, direccion, zona, municipio_id, municipios ( nombre ) ),
       tipo_notas ( nombre ),
-      asignados ( nombre ),
+      asignados ( nombre, color ),
       llevar_opciones ( nombre )
     `, { count: 'exact' })
     .order('numero_nota', { ascending: false })
