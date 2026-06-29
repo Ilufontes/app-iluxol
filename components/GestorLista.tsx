@@ -42,11 +42,9 @@ export default function GestorLista({
     if (!valor) return
     setError(null)
 
-    const { data, error } = await supabase
-      .from(tabla)
-      .insert({ nombre: valor })
-      .select(conColor ? 'id, nombre, activo, color' : 'id, nombre, activo')
-      .single()
+    const { data, error } = conColor
+      ? await supabase.from('asignados').insert({ nombre: valor }).select('id, nombre, activo, color').single()
+      : await supabase.from(tabla).insert({ nombre: valor }).select('id, nombre, activo').single()
 
     if (error) {
       setError(error.code === '23505' ? 'Ese valor ya existe.' : 'No se pudo añadir. Inténtalo de nuevo.')
