@@ -40,7 +40,7 @@ export type NotaListado = {
   clientes: { id?: number; nombre: string; telefono?: string | null; telefono2?: string | null; email?: string | null } | null
   domicilios: { id?: number; direccion: string; zona?: string | null; municipio_id?: number | null; municipios: { nombre: string } | null } | null
   tipo_notas: { nombre: string } | null
-  asignados: { nombre: string } | null
+  asignados: { nombre: string; color?: string | null } | null
   llevar_opciones?: { nombre: string } | null
 }
 
@@ -270,12 +270,16 @@ function formatearFecha(iso: string | null) {
 }
 
 function TarjetaNota({ nota, onClick }: { nota: NotaListado; onClick: () => void }) {
+  const colorAsignado = nota.asignados?.color
+  const fondoTarjeta = colorAsignado ? `${colorAsignado}14` : '#fff' // ~8% opacidad: tinte muy suave
+  const bordeTarjeta = colorAsignado ? `${colorAsignado}40` : '#e5e7eb' // ~25% opacidad
+
   return (
     <div
       onClick={onClick}
-      style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: '0.9rem 1.1rem', cursor: 'pointer' }}
-      onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#9ca3af')}
-      onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e5e7eb')}
+      style={{ background: fondoTarjeta, border: `1px solid ${bordeTarjeta}`, borderRadius: 12, padding: '0.9rem 1.1rem', cursor: 'pointer' }}
+      onMouseEnter={(e) => (e.currentTarget.style.borderColor = colorAsignado ? `${colorAsignado}80` : '#9ca3af')}
+      onMouseLeave={(e) => (e.currentTarget.style.borderColor = bordeTarjeta)}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
         <div>
@@ -300,7 +304,10 @@ function TarjetaNota({ nota, onClick }: { nota: NotaListado; onClick: () => void
           <div style={{ fontSize: 13, fontWeight: 500 }}>
             {formatearFecha(nota.dia_cita)} {nota.hora_cita ? `· ${nota.hora_cita.slice(0, 5)}` : ''}
           </div>
-          <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>{nota.asignados?.nombre ?? ''}</div>
+          <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2, display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end' }}>
+            {colorAsignado && <span style={{ width: 7, height: 7, borderRadius: '50%', background: colorAsignado, flexShrink: 0 }} />}
+            {nota.asignados?.nombre ?? ''}
+          </div>
         </div>
       </div>
       {nota.observaciones && (
