@@ -10,6 +10,7 @@ import {
   actualizarNota,
   buscarNotaPorNumero,
 } from './actions'
+import { comprobarDuplicados as comprobarDuplicadosCliente } from '../clientes/actions'
 import CabeceraSeccion from '@/components/CabeceraSeccion'
 import Paginacion from '@/components/Paginacion'
 
@@ -366,6 +367,15 @@ function unoOnulo(valor: any) {
   return Array.isArray(valor) ? (valor[0] ?? null) : valor
 }
 
+// Formatea un número de 9 dígitos al estilo "634 404 119" mientras se escribe,
+// igual que en la ficha de Clientes — así ambos formularios guardan el
+// teléfono de forma consistente y la comparación de duplicados funciona bien.
+function formatearTelefono(valor: string): string {
+  const limpio = valor.replace(/\D/g, '')
+  if (limpio.length !== 9) return valor
+  return `${limpio.slice(0, 3)} ${limpio.slice(3, 6)} ${limpio.slice(6, 9)}`
+}
+
 function normalizarNotaGuardada(nota: any): NotaListado {
   const domicilioCrudo = unoOnulo(nota.domicilios)
   return {
@@ -451,6 +461,22 @@ function ModalNota({
   const [ncTelefono2, setNcTelefono2] = useState('')
   const [ncEmail, setNcEmail] = useState('')
   const [ncOtros, setNcOtros] = useState('')
+  const [ncAvisoNombre, setNcAvisoNombre] = useState<{ id: number; nombre: string } | null>(null)
+  const [ncAvisoTelefono, setNcAvisoTelefono] = useState<{ id: number; nombre: string; campo: string } | null>(null)
+
+  useEffect(() => {
+    const t = setTimeout(async () => {
+      if (!ncNombre.trim() && !ncTelefono.trim() && !ncTelefono2.trim()) {
+        setNcAvisoNombre(null)
+        setNcAvisoTelefono(null)
+        return
+      }
+      const r = await comprobarDuplicadosCliente(ncNombre.trim(), ncTelefono.trim(), ncTelefono2.trim())
+      setNcAvisoNombre(r.nombreDuplicado)
+      setNcAvisoTelefono(r.telefonoDuplicado)
+    }, 450)
+    return () => clearTimeout(t)
+  }, [ncNombre, ncTelefono, ncTelefono2])
 
   const [tipoNotaId, setTipoNotaId] = useState<number | ''>(notaEditando?.tipo_nota_id ?? '')
   const [asignadoId, setAsignadoId] = useState<number | ''>(notaEditando?.asignado_id ?? '')
@@ -655,20 +681,35 @@ function ModalNota({
                       placeholder="Nombre y apellidos"
                       style={{ ...inputBase, marginBottom: 6 }}
                     />
+                    {ncAvisoNombre && (
+                      <p style={{ fontSize: 11, color: '#854F0B', margin: '-2px 0 6px' }}>
+                        Ya existe un cliente con este nombre: {ncAvisoNombre.nombre}.
+                      </p>
+                    )}
                     <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
                       <input
                         value={ncTelefono}
-                        onChange={(e) => setNcTelefono(e.target.value)}
+                        onChange={(e) => setNcTelefono(formatearTelefono(e.target.value))}
                         placeholder="Teléfono"
+                        maxLength={11}
                         style={{ ...inputBase, flex: 1 }}
                       />
                       <input
                         value={ncTelefono2}
-                        onChange={(e) => setNcTelefono2(e.target.value)}
+                        onChange={(e) => setNcTelefono2(formatearTelefono(e.target.value))}
                         placeholder="Teléfono 2 (opcional)"
+                        maxLength={11}
                         style={{ ...inputBase, flex: 1 }}
                       />
                     </div>
+                    {ncAvisoTelefono && (
+                      <p style={{
+                        fontSize: 11, color: '#854F0B', margin: '-2px 0 6px', background: '#FBF3E6',
+                        border: '1px solid #F0DFB9', borderRadius: 6, padding: '5px 8px',
+                      }}>
+                        Ese teléfono ya está registrado a <strong>{ncAvisoTelefono.nombre}</strong> ({ncAvisoTelefono.campo}). Puedes continuar igual si es un familiar.
+                      </p>
+                    )}
                     <input
                       value={ncEmail}
                       onChange={(e) => setNcEmail(e.target.value)}
