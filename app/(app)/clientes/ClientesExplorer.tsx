@@ -14,6 +14,7 @@ import {
   listarDocumentosCliente,
   subirDocumentoCliente,
   borrarDocumentoCliente,
+  comprobarDuplicados,
 } from './actions'
 import CabeceraSeccion from '@/components/CabeceraSeccion'
 import Paginacion from '@/components/Paginacion'
@@ -51,12 +52,16 @@ export default function ClientesExplorer({
   paginaActual,
   totalPaginas,
   totalClientes,
+  filtroLpd,
+  filtroMunicipioId,
 }: {
   clientesIniciales: Cliente[]
   municipios: Municipio[]
   paginaActual: number
   totalPaginas: number
   totalClientes: number
+  filtroLpd?: boolean | null
+  filtroMunicipioId?: number | null
 }) {
   const searchParams = useSearchParams()
   const [clientes, setClientes] = useState<Cliente[]>(clientesIniciales)
@@ -148,8 +153,49 @@ export default function ClientesExplorer({
         value={busqueda}
         onChange={(e) => setBusqueda(e.target.value)}
         placeholder="Buscar por nombre, teléfono, dirección o email"
-        style={{ ...inputBase, width: '100%', marginBottom: 16 }}
+        style={{ ...inputBase, width: '100%', marginBottom: 10 }}
       />
+
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <select
+          defaultValue={filtroLpd === true ? 'true' : filtroLpd === false ? 'false' : ''}
+          onChange={(e) => {
+            const params = new URLSearchParams(window.location.search)
+            if (e.target.value) params.set('lpd', e.target.value)
+            else params.delete('lpd')
+            params.delete('pagina')
+            window.location.href = `/clientes?${params.toString()}`
+          }}
+          style={{ ...inputBase, width: 'auto', height: 36 }}
+        >
+          <option value="">LPD: todos</option>
+          <option value="true">LPD firmado</option>
+          <option value="false">LPD pendiente</option>
+        </select>
+
+        <select
+          defaultValue={filtroMunicipioId ? String(filtroMunicipioId) : ''}
+          onChange={(e) => {
+            const params = new URLSearchParams(window.location.search)
+            if (e.target.value) params.set('municipio', e.target.value)
+            else params.delete('municipio')
+            params.delete('pagina')
+            window.location.href = `/clientes?${params.toString()}`
+          }}
+          style={{ ...inputBase, width: 'auto', height: 36 }}
+        >
+          <option value="">Municipio: todos</option>
+          {municipios.map((m) => (
+            <option key={m.id} value={m.id}>{m.nombre}</option>
+          ))}
+        </select>
+
+        {(filtroLpd !== null && filtroLpd !== undefined) || filtroMunicipioId ? (
+          <a href="/clientes" style={{ fontSize: 12, color: '#0F6E56', textDecoration: 'underline' }}>
+            Quitar filtros
+          </a>
+        ) : null}
+      </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {listaVisible.length === 0 && !buscando && (
@@ -277,9 +323,29 @@ function ModalCliente({
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [clienteIdActual, setClienteIdActual] = useState<number | null>(cliente?.id ?? null)
+  const [avisoNombre, setAvisoNombre] = useState<{ id: number; nombre: string } | null>(null)
+  const [avisoTelefono, setAvisoTelefono] = useState<{ id: number; nombre: string; campo: string } | null>(null)
+
+  useEffect(() => {
+    const t = setTimeout(async () => {
+      if (!nombre.trim() && !telefono.trim() && !telefono2.trim()) {
+        setAvisoNombre(null)
+        setAvisoTelefono(null)
+        return
+      }
+      const r = await comprobarDuplicados(nombre.trim(), telefono.trim(), telefono2.trim(), clienteIdActual ?? undefined)
+      setAvisoNombre(r.nombreDuplicado)
+      setAvisoTelefono(r.telefonoDuplicado)
+    }, 450)
+    return () => clearTimeout(t)
+  }, [nombre, telefono, telefono2, clienteIdActual])
 
   async function handleGuardarCliente() {
     if (!nombre.trim()) return
+    if (avisoTelefono) {
+      setError(`Ese teléfono ya pertenece a ${avisoTelefono.nombre} (${avisoTelefono.campo}). Corrígelo antes de guardar.`)
+      return
+    }
     setGuardando(true)
     setError(null)
     try {
@@ -309,8 +375,8 @@ function ModalCliente({
         const clienteNuevo: Cliente = { ...creado, domicilios: [] as Domicilio[] }
         onGuardado(clienteNuevo, true)
       }
-    } catch {
-      setError('No se pudo guardar el cliente. Inténtalo de nuevo.')
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo guardar el cliente. Inténtalo de nuevo.')
     } finally {
       setGuardando(false)
     }
@@ -360,6 +426,11 @@ function ModalCliente({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <Campo etiqueta="Nombre">
               <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre y apellidos" style={inputBase} />
+              {avisoNombre && (
+                <p style={{ fontSize: 12, color: '#854F0B', margin: '4px 0 0' }}>
+                  Ya existe un cliente con este nombre: {avisoNombre.nombre}. Puedes guardar igual si son personas distintas.
+                </p>
+              )}
             </Campo>
             <div style={{ display: 'flex', gap: 10 }}>
               <Campo etiqueta="Teléfono" flex>
@@ -369,6 +440,11 @@ function ModalCliente({
                 <input value={telefono2 ?? ''} onChange={(e) => setTelefono2(e.target.value)} placeholder="Opcional" style={inputBase} />
               </Campo>
             </div>
+            {avisoTelefono && (
+              <p style={{ fontSize: 12, color: '#791F1F', margin: '-4px 0 0', background: '#FCEBEB', border: '1px solid #F09595', borderRadius: 6, padding: '6px 10px' }}>
+                Ese teléfono ya pertenece a <strong>{avisoTelefono.nombre}</strong> ({avisoTelefono.campo}). No se podrá guardar mientras coincida.
+              </p>
+            )}
             <Campo etiqueta="Email">
               <input value={email ?? ''} onChange={(e) => setEmail(e.target.value)} placeholder="nombre@correo.com" style={inputBase} />
             </Campo>
@@ -436,7 +512,7 @@ function ModalCliente({
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '16px 1.5rem', borderTop: '1px solid #e5e7eb', flexShrink: 0 }}>
             <button onClick={onCerrar} style={botonSecundario}>Cerrar</button>
-            <button onClick={handleGuardarCliente} disabled={guardando} style={botonPrimario}>
+            <button onClick={handleGuardarCliente} disabled={guardando || !!avisoTelefono} style={botonPrimario}>
               {guardando ? 'Guardando...' : 'Guardar cliente'}
             </button>
           </div>
