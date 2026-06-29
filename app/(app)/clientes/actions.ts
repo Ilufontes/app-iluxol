@@ -87,11 +87,6 @@ export async function crearCliente(datos: {
   email: string
   otros_datos: string
 }) {
-  const { telefonoDuplicado } = await comprobarDuplicados(datos.nombre, datos.telefono, datos.telefono2)
-  if (telefonoDuplicado) {
-    throw new Error(`Ese teléfono ya pertenece a ${telefonoDuplicado.nombre} (${telefonoDuplicado.campo}).`)
-  }
-
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('clientes')
@@ -117,11 +112,6 @@ export async function actualizarCliente(
     lpd_firmado: boolean
   }
 ) {
-  const { telefonoDuplicado } = await comprobarDuplicados(datos.nombre, datos.telefono, datos.telefono2, id)
-  if (telefonoDuplicado) {
-    throw new Error(`Ese teléfono ya pertenece a ${telefonoDuplicado.nombre} (${telefonoDuplicado.campo}).`)
-  }
-
   const supabase = await createClient()
   const { error } = await supabase
     .from('clientes')
