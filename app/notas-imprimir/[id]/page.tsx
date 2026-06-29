@@ -12,6 +12,13 @@ function formatearFecha(iso: string | null) {
   return `${d}/${m}/${y}`
 }
 
+function formatearTelefono(valor: string | null | undefined): string {
+  if (!valor) return '—'
+  const limpio = valor.replace(/\D/g, '')
+  if (limpio.length !== 9) return valor
+  return `${limpio.slice(0, 3)} ${limpio.slice(3, 6)} ${limpio.slice(6, 9)}`
+}
+
 // Calcula cuántas líneas ocupará aproximadamente el texto de observaciones,
 // teniendo en cuenta tanto los saltos de línea reales como el ajuste de línea
 // automático del navegador cuando una frase es más larga que el ancho de la celda.
@@ -157,9 +164,9 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
             </tr>
             <tr>
               <td className="etiqueta">TELEFONO</td>
-              <td>{nota.clientes?.telefono ?? '—'}</td>
+              <td>{formatearTelefono(nota.clientes?.telefono)}</td>
               <td className="etiqueta">TELEFONO 2</td>
-              <td>{nota.clientes?.telefono2 ?? '—'}</td>
+              <td>{formatearTelefono(nota.clientes?.telefono2)}</td>
             </tr>
             <tr>
               <td className="etiqueta">E-MAIL</td>
