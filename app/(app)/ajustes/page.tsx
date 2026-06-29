@@ -18,11 +18,10 @@ export default async function AjustesPage({
   const pestañaActiva = PESTAÑAS.find((p) => p.tabla === tab) ?? PESTAÑAS[0]
 
   const supabase = await createClient()
-  const columnas = pestañaActiva.tabla === 'asignados' ? 'id, nombre, activo, color' : 'id, nombre, activo'
-  const { data: items } = await supabase
-    .from(pestañaActiva.tabla)
-    .select(columnas)
-    .order('nombre')
+  const { data: items } =
+    pestañaActiva.tabla === 'asignados'
+      ? await supabase.from('asignados').select('id, nombre, activo, color').order('nombre')
+      : await supabase.from(pestañaActiva.tabla).select('id, nombre, activo').order('nombre')
 
   return (
     <div>
