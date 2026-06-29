@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import {
   buscarClientes,
@@ -635,7 +635,16 @@ function ModalNota({
                 )}
 
                 {!mostrandoFormCliente ? (
-                  <button onClick={() => setMostrandoFormCliente(true)} style={{ ...botonSecundarioVerde, width: '100%', marginTop: 6 }}>
+                  <button
+                    onClick={() => {
+                      // Si lo que se buscó parece un nombre (no solo números, como un teléfono),
+                      // se precarga en el formulario para no tener que volver a escribirlo.
+                      const pareceNombre = terminoBusqueda.trim() && !/^\d+$/.test(terminoBusqueda.trim())
+                      if (pareceNombre) setNcNombre(terminoBusqueda.trim())
+                      setMostrandoFormCliente(true)
+                    }}
+                    style={{ ...botonSecundarioVerde, width: '100%', marginTop: 6 }}
+                  >
                     + Crear cliente nuevo
                   </button>
                 ) : (
@@ -745,16 +754,10 @@ function ModalNota({
           <div style={bloqueColor.azul}>
           <div style={{ display: 'flex', gap: 10 }}>
             <Campo etiqueta="Tipo de nota" flex>
-              <select value={tipoNotaId} onChange={(e) => setTipoNotaId(e.target.value ? Number(e.target.value) : '')} style={{ ...inputBase, border: '1px solid #c9cef7', background: '#fff' }}>
-                <option value="">Selecciona...</option>
-                {tiposNota.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
-              </select>
+              <SelectorConBusqueda opciones={tiposNota} valor={tipoNotaId} onChange={setTipoNotaId} borderColor="#c9cef7" />
             </Campo>
             <Campo etiqueta="Asignada" flex>
-              <select value={asignadoId} onChange={(e) => setAsignadoId(e.target.value ? Number(e.target.value) : '')} style={{ ...inputBase, border: '1px solid #c9cef7', background: '#fff' }}>
-                <option value="">Selecciona...</option>
-                {asignados.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
-              </select>
+              <SelectorConBusqueda opciones={asignados} valor={asignadoId} onChange={setAsignadoId} borderColor="#c9cef7" />
             </Campo>
           </div>
 
@@ -773,10 +776,7 @@ function ModalNota({
           </Campo>
 
           <Campo etiqueta="Llevar">
-            <select value={llevarId} onChange={(e) => setLlevarId(e.target.value ? Number(e.target.value) : '')} style={{ ...inputBase, border: '1px solid #c9cef7', background: '#fff' }}>
-              <option value="">Selecciona...</option>
-              {llevarOpciones.map((l) => <option key={l.id} value={l.id}>{l.nombre}</option>)}
-            </select>
+            <SelectorConBusqueda opciones={llevarOpciones} valor={llevarId} onChange={setLlevarId} borderColor="#c9cef7" />
           </Campo>
 
           <div style={{ display: 'flex', gap: 10 }}>
@@ -904,6 +904,86 @@ function Campo({ etiqueta, children, flex }: { etiqueta: string; children: React
     <div style={flex ? { flex: 1 } : undefined}>
       <label style={{ fontSize: 13, color: '#6b7280', display: 'block', marginBottom: 4 }}>{etiqueta}</label>
       {children}
+    </div>
+  )
+}
+
+// Combobox simple: un input de texto que filtra la lista de opciones mientras
+// se escribe, en vez de un <select> nativo largo sin buscador. Al elegir una
+// opción (clic o Enter sobre la única que queda), se cierra y queda fijada.
+function SelectorConBusqueda({
+  opciones, valor, onChange, placeholder, borderColor,
+}: {
+  opciones: Opcion[]
+  valor: number | ''
+  onChange: (id: number | '') => void
+  placeholder?: string
+  borderColor?: string
+}) {
+  const opcionActual = opciones.find((o) => o.id === valor)
+  const [abierto, setAbierto] = useState(false)
+  const [texto, setTexto] = useState('')
+  const contenedorRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function alClicFuera(e: MouseEvent) {
+      if (contenedorRef.current && !contenedorRef.current.contains(e.target as Node)) {
+        setAbierto(false)
+        setTexto('')
+      }
+    }
+    document.addEventListener('mousedown', alClicFuera)
+    return () => document.removeEventListener('mousedown', alClicFuera)
+  }, [])
+
+  const filtradas = texto.trim()
+    ? opciones.filter((o) => o.nombre.toLowerCase().includes(texto.trim().toLowerCase()))
+    : opciones
+
+  return (
+    <div ref={contenedorRef} style={{ position: 'relative' }}>
+      <input
+        type="text"
+        value={abierto ? texto : (opcionActual?.nombre ?? '')}
+        onChange={(e) => { setTexto(e.target.value); setAbierto(true) }}
+        onFocus={() => { setTexto(''); setAbierto(true) }}
+        placeholder={placeholder ?? 'Selecciona...'}
+        style={{
+          width: '100%', height: 36, borderRadius: 8, border: `1px solid ${borderColor ?? '#d1d5db'}`,
+          padding: '0 10px', fontSize: 13, boxSizing: 'border-box', background: '#fff',
+        }}
+      />
+      {abierto && (
+        <div style={{
+          position: 'absolute', zIndex: 30, top: 38, left: 0, right: 0, background: '#fff',
+          border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          maxHeight: 220, overflowY: 'auto',
+        }}>
+          {valor !== '' && (
+            <div
+              onClick={() => { onChange(''); setAbierto(false); setTexto('') }}
+              style={{ padding: '8px 10px', fontSize: 13, cursor: 'pointer', color: '#9ca3af', borderBottom: '1px solid #f0f0f0' }}
+            >
+              Sin selección
+            </div>
+          )}
+          {filtradas.length === 0 && (
+            <div style={{ padding: '8px 10px', fontSize: 13, color: '#9ca3af' }}>Sin resultados</div>
+          )}
+          {filtradas.map((o) => (
+            <div
+              key={o.id}
+              onClick={() => { onChange(o.id); setAbierto(false); setTexto('') }}
+              style={{
+                padding: '8px 10px', fontSize: 13, cursor: 'pointer',
+                background: o.id === valor ? '#f0f2fd' : 'transparent',
+              }}
+            >
+              {o.nombre}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
