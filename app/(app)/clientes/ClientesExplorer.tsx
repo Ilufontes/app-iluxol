@@ -46,6 +46,21 @@ function unoOnulo(valor: any) {
   return Array.isArray(valor) ? (valor[0] ?? null) : valor
 }
 
+// Quita todo lo que no sea un dígito, para poder comparar dos teléfonos
+// aunque estén escritos con espacios, guiones o cualquier otro formato.
+function limpiarTelefono(valor: string): string {
+  return valor.replace(/\D/g, '')
+}
+
+// Formatea un número de 9 dígitos al estilo "634 404 119" (como en el iPhone),
+// dejando intacto cualquier otro formato (prefijos internacionales, menos de
+// 9 dígitos mientras se escribe, etc.) para no estorbar al usuario.
+function formatearTelefono(valor: string): string {
+  const limpio = limpiarTelefono(valor)
+  if (limpio.length !== 9) return valor
+  return `${limpio.slice(0, 3)} ${limpio.slice(3, 6)} ${limpio.slice(6, 9)}`
+}
+
 export default function ClientesExplorer({
   clientesIniciales,
   municipios,
@@ -434,10 +449,22 @@ function ModalCliente({
             </Campo>
             <div style={{ display: 'flex', gap: 10 }}>
               <Campo etiqueta="Teléfono" flex>
-                <input value={telefono ?? ''} onChange={(e) => setTelefono(e.target.value)} placeholder="600 000 000" style={inputBase} />
+                <input
+                  value={telefono ?? ''}
+                  onChange={(e) => setTelefono(formatearTelefono(e.target.value))}
+                  placeholder="600 000 000"
+                  maxLength={11}
+                  style={inputBase}
+                />
               </Campo>
               <Campo etiqueta="Teléfono 2" flex>
-                <input value={telefono2 ?? ''} onChange={(e) => setTelefono2(e.target.value)} placeholder="Opcional" style={inputBase} />
+                <input
+                  value={telefono2 ?? ''}
+                  onChange={(e) => setTelefono2(formatearTelefono(e.target.value))}
+                  placeholder="Opcional"
+                  maxLength={11}
+                  style={inputBase}
+                />
               </Campo>
             </div>
             {avisoTelefono && (
