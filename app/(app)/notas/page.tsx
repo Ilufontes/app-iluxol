@@ -6,15 +6,16 @@ const POR_PAGINA = 40
 export default async function NotasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ pagina?: string; fecha?: string; cliente?: string }>
+  searchParams: Promise<{ pagina?: string; fecha?: string; cliente?: string; asignado?: string }>
 }) {
-  const { pagina, fecha, cliente } = await searchParams
+  const { pagina, fecha, cliente, asignado } = await searchParams
   const paginaActual = Math.max(1, Number(pagina) || 1)
   const desde = (paginaActual - 1) * POR_PAGINA
   const hasta = desde + POR_PAGINA - 1
   const filtroFecha = fecha && /^\d{4}-\d{2}-\d{2}$/.test(fecha) ? fecha : null
   const filtroClienteId = cliente && /^\d+$/.test(cliente) ? Number(cliente) : null
-  const hayFiltro = Boolean(filtroFecha || filtroClienteId)
+  const filtroAsignadoId = asignado && /^\d+$/.test(asignado) ? Number(asignado) : null
+  const hayFiltro = Boolean(filtroFecha || filtroClienteId || filtroAsignadoId)
 
   const supabase = await createClient()
 
@@ -36,6 +37,9 @@ export default async function NotasPage({
   }
   if (filtroClienteId) {
     consultaNotas = consultaNotas.eq('cliente_id', filtroClienteId)
+  }
+  if (filtroAsignadoId) {
+    consultaNotas = consultaNotas.eq('asignado_id', filtroAsignadoId)
   }
   if (!hayFiltro) {
     consultaNotas = consultaNotas.range(desde, hasta)
@@ -91,6 +95,7 @@ export default async function NotasPage({
       totalNotas={totalNotas ?? 0}
       filtroFecha={filtroFecha}
       filtroClienteNombre={clienteFiltrado?.data?.nombre ?? null}
+      filtroAsignadoId={filtroAsignadoId}
     />
   )
 }
