@@ -147,3 +147,86 @@ export async function actualizarNota(
   revalidatePath('/notas')
   return data
 }
+
+export async function enviarNotaACalendarioAction(notaId: number) {
+  const { enviarNotaAlCalendario } = await import('@/lib/googleCalendar')
+  const { generarPdfNota } = await import('@/lib/generarPdfNota')
+
+  const supabase = await createClient()
+
+  const { data: nota, error } = await supabase
+    .from('notas')
+    .select(`
+      id, numero_nota, fecha_entrada, observaciones, dia_cita, hora_cita,
+      clientes ( nombre, telefono, telefono2, email ),
+      domicilios ( direccion, zona, municipios ( nombre ) ),
+      tipo_notas ( nombre ),
+      asignados ( nombre, color ),
+      llevar_opciones ( nombre )
+    `)
+    .eq('id', notaId)
+    .single()
+
+  if (error || !nota) throw new Error('No se pudo cargar la nota.')
+
+  function unoOnulo(valor: any) {
+    return Array.isArray(valor) ? (valor[0] ?? null) : valor
+  }
+
+  const cliente = unoOnulo(nota.clientes)
+  const domicilio = unoOnulo(nota.domicilios)
+  const municipio = domicilio ? unoOnulo(domicilio.municipios) : null
+  const tipoNota = unoOnulo(nota.tipo_notas)
+  const asignado = unoOnulo(nota.asignados)
+  const llevar = unoOnulo(nota.llevar_opciones)
+
+  if (!nota.dia_cita || !nota.hora_cita) {
+    throw new Error('Esta nota no tiene fecha y hora de cita, así que no se puede enviar al calendario.')
+  }
+
+  const notaParaPdf = {
+    ...nota,
+    clientes: cliente,
+    tipo_notas: tipoNota,
+    asignados: asignado,
+    llevar_opciones: llevar,
+    domicilios: domicilio ? { ...domicilio, municipios: municipio } : null,
+  }
+
+  // Intenta cargar el logo desde el propio sitio público para incluirlo en el PDF.
+  let logoBytes: Uint8Array | undefined
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || ''
+    if (baseUrl) {
+      const resp = await fetch(`${baseUrl}/logo-iluxol.png`)
+      if (resp.ok) logoBytes = new Uint8Array(await resp.arrayBuffer())
+    }
+  } catch {
+    logoBytes = undefined
+  }
+
+  const pdfBytes = await generarPdfNota(notaParaPdf, logoBytes)
+
+  const numero = nota.numero_nota ?? nota.id
+  const nombreClienteLimpio = (cliente?.nombre ?? 'Sin cliente').replace(/[\\/:*?"<>|]+/g, ' ').trim()
+  const pdfNombreArchivo = `${numero} - ${nombreClienteLimpio}.pdf`
+
+  const resultado = await enviarNotaAlCalendario({
+    numeroNota: numero,
+    tipoNota: tipoNota?.nombre ?? '',
+    fechaCitaISO: nota.dia_cita,
+    horaCitaHHMM: nota.hora_cita.slice(0, 5),
+    duracionMinutos: 30,
+    direccion: domicilio
+      ? `${domicilio.direccion}${municipio?.nombre ? ', ' + municipio.nombre : ''}`
+      : '',
+    nombreCliente: cliente?.nombre ?? '—',
+    telefonoCliente: cliente?.telefono ?? '',
+    observaciones: nota.observaciones ?? '',
+    colorAsignado: asignado?.color ?? null,
+    pdfBytes,
+    pdfNombreArchivo,
+  })
+
+  return resultado
+}
