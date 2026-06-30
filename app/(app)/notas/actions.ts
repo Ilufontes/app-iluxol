@@ -30,7 +30,7 @@ export async function buscarClientes(termino: string) {
 
   const { data, error } = await supabase
     .from('clientes')
-    .select('id, nombre, telefono, telefono2, email, domicilios ( id, direccion, zona, municipios ( nombre ) )')
+    .select('id, nombre, telefono, telefono2, email, lpd_firmado, domicilios ( id, direccion, zona, municipios ( nombre ) )')
     .or(`nombre.ilike.%${t}%,telefono.ilike.%${t}%`)
     .limit(10)
 
@@ -49,7 +49,7 @@ export async function crearClienteRapido(datos: {
   const { data, error } = await supabase
     .from('clientes')
     .insert(datos)
-    .select('id, nombre, telefono, telefono2, email, otros_datos')
+    .select('id, nombre, telefono, telefono2, email, otros_datos, lpd_firmado')
     .single()
 
   if (error) throw new Error('No se pudo crear el cliente.')
