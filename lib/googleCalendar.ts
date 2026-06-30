@@ -1,4 +1,5 @@
 import { google } from 'googleapis'
+import { Readable } from 'stream'
 
 // Mapea el mismo color que ya usamos en la app para cada asignado (hexadecimal)
 // a uno de los "colorId" predefinidos que acepta la API de Google Calendar.
@@ -77,6 +78,10 @@ export async function enviarNotaAlCalendario(datos: DatosEventoNota): Promise<Re
   const calendar = google.calendar({ version: 'v3', auth })
 
   // 1. Subir el PDF a la carpeta de Drive compartida.
+  // La API de Drive (via googleapis) espera un stream legible real con
+  // .pipe(), no un Buffer plano — hay que envolverlo con Readable.from().
+  const pdfStream = Readable.from(Buffer.from(datos.pdfBytes))
+
   const subida = await drive.files.create({
     requestBody: {
       name: datos.pdfNombreArchivo,
@@ -84,7 +89,7 @@ export async function enviarNotaAlCalendario(datos: DatosEventoNota): Promise<Re
     },
     media: {
       mimeType: 'application/pdf',
-      body: Buffer.from(datos.pdfBytes),
+      body: pdfStream,
     },
     fields: 'id, webViewLink',
   })
