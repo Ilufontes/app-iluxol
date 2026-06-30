@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 export type ItemLista = {
@@ -35,6 +36,7 @@ export default function GestorLista({
   const [error, setError] = useState<string | null>(null)
   const [selectorAbiertoId, setSelectorAbiertoId] = useState<number | null>(null)
   const supabase = createClient()
+  const router = useRouter()
   const conColor = tabla === 'asignados'
 
   async function anadir() {
@@ -53,6 +55,7 @@ export default function GestorLista({
 
     setItems((prev) => [...prev, data as ItemLista].sort((a, b) => a.nombre.localeCompare(b.nombre)))
     setNuevoValor('')
+    router.refresh()
   }
 
   async function alternarActivo(item: ItemLista) {
@@ -66,6 +69,7 @@ export default function GestorLista({
     setItems((prev) =>
       prev.map((i) => (i.id === item.id ? { ...i, activo: !i.activo } : i))
     )
+    router.refresh()
   }
 
   async function renombrar(item: ItemLista, nuevoNombre: string) {
@@ -80,6 +84,7 @@ export default function GestorLista({
     if (error) return
 
     setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, nombre: valor } : i)))
+    router.refresh()
   }
 
   async function cambiarColor(item: ItemLista, color: string | null) {
@@ -91,6 +96,7 @@ export default function GestorLista({
     if (error) return
 
     setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, color } : i)))
+    router.refresh()
     setSelectorAbiertoId(null)
   }
 
