@@ -208,8 +208,20 @@ export async function enviarNotaACalendarioAction(notaId: number) {
   const pdfBytes = await generarPdfNota(notaParaPdf, logoBytes)
 
   const numero = nota.numero_nota ?? nota.id
-  const nombreClienteLimpio = (cliente?.nombre ?? 'Sin cliente').replace(/[\\/:*?"<>|]+/g, ' ').trim()
-  const pdfNombreArchivo = `${numero} - ${nombreClienteLimpio}.pdf`
+
+  // Sube el PDF a un bucket público de Supabase Storage. El enlace se pone
+  // en la descripción del evento de Calendar — no usamos Google Drive porque
+  // las cuentas de servicio no tienen cuota de almacenamiento propia ahí.
+  const rutaStorage = `nota-${notaId}-${Date.now()}.pdf`
+  const { error: errorSubida } = await supabase.storage
+    .from('notas-pdf-calendario')
+    .upload(rutaStorage, pdfBytes, { contentType: 'application/pdf', upsert: true })
+
+  if (errorSubida) throw new Error('No se pudo subir el PDF de la nota.')
+
+  const { data: urlPublica } = supabase.storage
+    .from('notas-pdf-calendario')
+    .getPublicUrl(rutaStorage)
 
   const resultado = await enviarNotaAlCalendario({
     numeroNota: numero,
@@ -224,8 +236,7 @@ export async function enviarNotaACalendarioAction(notaId: number) {
     telefonoCliente: cliente?.telefono ?? '',
     observaciones: nota.observaciones ?? '',
     colorAsignado: asignado?.color ?? null,
-    pdfBytes,
-    pdfNombreArchivo,
+    pdfUrl: urlPublica.publicUrl,
   })
 
   return resultado
