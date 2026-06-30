@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 
@@ -19,10 +19,6 @@ function formatearTelefono(valor: string | null | undefined): string {
   return `${limpio.slice(0, 3)} ${limpio.slice(3, 6)} ${limpio.slice(6, 9)}`
 }
 
-
-// Calcula cuántas líneas ocupará aproximadamente el texto de observaciones,
-// teniendo en cuenta tanto los saltos de línea reales como el ajuste de línea
-// automático del navegador cuando una frase es más larga que el ancho de la celda.
 function contarLineasAproximadas(texto: string, caracteresPorLinea: number): number {
   if (!texto) return 1
   const lineas = texto.split('\n')
@@ -34,7 +30,9 @@ function contarLineasAproximadas(texto: string, caracteresPorLinea: number): num
 }
 
 async function cargarNota(id: string) {
-  const supabase = await createClient()
+  // Usamos el cliente admin para bypasear RLS — esta página es pública
+  // (accesible desde el enlace del evento de Google Calendar sin login).
+  const supabase = createAdminClient()
   const { data: notaCruda, error } = await supabase
     .from('notas')
     .select(`
@@ -52,9 +50,9 @@ async function cargarNota(id: string) {
 
   return {
     ...notaCruda,
-    clientes: unoOnulo(notaCruda.clientes),
-    tipo_notas: unoOnulo(notaCruda.tipo_notas),
-    asignados: unoOnulo(notaCruda.asignados),
+    clientes:       unoOnulo(notaCruda.clientes),
+    tipo_notas:     unoOnulo(notaCruda.tipo_notas),
+    asignados:      unoOnulo(notaCruda.asignados),
     llevar_opciones: unoOnulo(notaCruda.llevar_opciones),
     domicilios: (() => {
       const d = unoOnulo(notaCruda.domicilios)
@@ -79,19 +77,13 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
 
   if (!nota) notFound()
 
-  // El nombre "M.B" se usa como código interno para notas que no deben llevar
-  // ningún nombre de asignado visible en el documento impreso.
   const nombreAsignado = nota.asignados?.nombre ?? ''
   const mostrarAsignado = nombreAsignado.trim().toUpperCase() !== 'M.B'
 
-  // Altura adaptable de Observaciones: una línea normal son unos 90 caracteres
-  // con esta fuente y ancho de celda. Si el texto necesita más de 3 líneas,
-  // el recuadro crece, y le restamos ese exceso al recuadro de Apuntes y
-  // Mediciones para que la orden de trabajo siga cabiendo en una sola hoja A4.
   const CARACTERES_POR_LINEA = 90
   const ALTURA_LINEA_MM = 4.2
   const ALTURA_BASE_MM = 17
-  const ALTURA_MAXIMA_OBSERVACIONES_MM = 60 // tope para no comerse demasiado del recuadro de apuntes
+  const ALTURA_MAXIMA_OBSERVACIONES_MM = 60
 
   const lineasObservaciones = contarLineasAproximadas(nota.observaciones ?? '', CARACTERES_POR_LINEA)
   const alturaObservacionesMm = Math.min(
@@ -100,11 +92,8 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
   )
   const excesoObservaciones = Math.max(0, alturaObservacionesMm - ALTURA_BASE_MM)
 
-  // La fila Municipio/Zona reparte el ancho de la tabla entre las dos celdas
-  // de valor, así que cada una tiene aproximadamente la mitad de caracteres
-  // por línea que una celda a ancho completo como Observaciones.
   const CARACTERES_POR_LINEA_MEDIA_FILA = 42
-  const ALTURA_BASE_FILA_SIMPLE_MM = 8 // lo que ocupa una fila normal de una sola línea
+  const ALTURA_BASE_FILA_SIMPLE_MM = 8
   const ALTURA_MAXIMA_ZONA_MM = 30
   const lineasZona = contarLineasAproximadas(nota.domicilios?.zona ?? '', CARACTERES_POR_LINEA_MEDIA_FILA)
   const alturaFilaMunicipioZonaMm = Math.min(
