@@ -97,9 +97,24 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
     ALTURA_MAXIMA_OBSERVACIONES_MM,
     Math.max(ALTURA_BASE_MM, lineasObservaciones * ALTURA_LINEA_MM + 6)
   )
-  const exceso = Math.max(0, alturaObservacionesMm - ALTURA_BASE_MM)
+  const excesoObservaciones = Math.max(0, alturaObservacionesMm - ALTURA_BASE_MM)
+
+  // La fila Municipio/Zona reparte el ancho de la tabla entre las dos celdas
+  // de valor, así que cada una tiene aproximadamente la mitad de caracteres
+  // por línea que una celda a ancho completo como Observaciones.
+  const CARACTERES_POR_LINEA_MEDIA_FILA = 42
+  const ALTURA_BASE_FILA_SIMPLE_MM = 8 // lo que ocupa una fila normal de una sola línea
+  const ALTURA_MAXIMA_ZONA_MM = 30
+  const lineasZona = contarLineasAproximadas(nota.domicilios?.zona ?? '', CARACTERES_POR_LINEA_MEDIA_FILA)
+  const alturaFilaMunicipioZonaMm = Math.min(
+    ALTURA_MAXIMA_ZONA_MM,
+    Math.max(ALTURA_BASE_FILA_SIMPLE_MM, lineasZona * ALTURA_LINEA_MM + 4)
+  )
+  const excesoZona = Math.max(0, alturaFilaMunicipioZonaMm - ALTURA_BASE_FILA_SIMPLE_MM)
+
+  const excesoTotal = excesoObservaciones + excesoZona
   const ALTURA_RECUADRO_APUNTES_BASE_MM = 148
-  const alturaRecuadroApuntesMm = ALTURA_RECUADRO_APUNTES_BASE_MM - exceso
+  const alturaRecuadroApuntesMm = ALTURA_RECUADRO_APUNTES_BASE_MM - excesoTotal
 
   return (
     <>
@@ -172,11 +187,11 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
               <td className="etiqueta">E-MAIL</td>
               <td colSpan={3}>{nota.clientes?.email ?? '—'}</td>
             </tr>
-            <tr>
+            <tr style={{ height: `${alturaFilaMunicipioZonaMm}mm` }}>
               <td className="etiqueta">MUNICIPIO</td>
               <td>{nota.domicilios?.municipios?.nombre ?? '—'}</td>
-              <td className="etiqueta">ZONA</td>
-              <td>{nota.domicilios?.zona ?? '—'}</td>
+              <td className="etiqueta" style={{ verticalAlign: 'top' }}>ZONA</td>
+              <td style={{ whiteSpace: 'pre-wrap', verticalAlign: 'top' }}>{nota.domicilios?.zona || '—'}</td>
             </tr>
             <tr>
               <td className="etiqueta">DIRECCION</td>
