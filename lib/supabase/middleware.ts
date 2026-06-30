@@ -34,7 +34,9 @@ export async function updateSession(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const esRutaPublica = request.nextUrl.pathname.startsWith('/login')
+  const esRutaPublica =
+    request.nextUrl.pathname.startsWith('/login') ||
+    request.nextUrl.pathname.startsWith('/notas-imprimir')
 
   if (!user && !esRutaPublica) {
     const url = request.nextUrl.clone()
