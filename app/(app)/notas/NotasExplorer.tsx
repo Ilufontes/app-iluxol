@@ -9,6 +9,7 @@ import {
   crearNota,
   actualizarNota,
   buscarNotaPorNumero,
+  enviarNotaACalendarioAction,
 } from './actions'
 import { comprobarDuplicados as comprobarDuplicadosCliente } from '../clientes/actions'
 import CabeceraSeccion from '@/components/CabeceraSeccion'
@@ -908,6 +909,22 @@ function PanelDetalleNota({
   onCerrar: () => void
   onEditar: () => void
 }) {
+  const [enviandoCalendario, setEnviandoCalendario] = useState(false)
+  const [avisoCalendario, setAvisoCalendario] = useState<{ tipo: 'ok' | 'error'; mensaje: string } | null>(null)
+
+  async function handleEnviarCalendario() {
+    setEnviandoCalendario(true)
+    setAvisoCalendario(null)
+    try {
+      await enviarNotaACalendarioAction(nota.id)
+      setAvisoCalendario({ tipo: 'ok', mensaje: 'Enviado al calendario correctamente, con el PDF adjunto.' })
+    } catch (err: any) {
+      setAvisoCalendario({ tipo: 'error', mensaje: err?.message || 'No se pudo enviar al calendario. Inténtalo de nuevo.' })
+    } finally {
+      setEnviandoCalendario(false)
+    }
+  }
+
   return (
     <div style={overlayStyle}>
       <div style={{ ...modalStyle, width: 480, padding: 0, overflowY: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -960,7 +977,23 @@ function PanelDetalleNota({
         )}
         </div>
 
+        {avisoCalendario && (
+          <div style={{
+            margin: '0 24px 12px', padding: '8px 12px', borderRadius: 8, fontSize: 12,
+            background: avisoCalendario.tipo === 'error' ? '#FCEBEB' : '#E9F5EF',
+            border: `1px solid ${avisoCalendario.tipo === 'error' ? '#F09595' : '#CDE9DC'}`,
+            color: avisoCalendario.tipo === 'error' ? '#791F1F' : '#0F6E56',
+          }}>
+            {avisoCalendario.mensaje}
+          </div>
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, padding: '16px 24px', borderTop: '1px solid #e5e7eb', flexShrink: 0 }}>
+          {nota.dia_cita && nota.hora_cita && (
+            <button onClick={handleEnviarCalendario} disabled={enviandoCalendario} style={botonSecundario}>
+              {enviandoCalendario ? 'Enviando...' : '📅 Enviar al calendario'}
+            </button>
+          )}
           <button onClick={onEditar} style={botonPrimario}>Editar</button>
           <a
             href={`/notas-imprimir/${nota.id}`}
