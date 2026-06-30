@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import {
   crearCliente,
   actualizarCliente,
@@ -79,6 +79,7 @@ export default function ClientesExplorer({
   filtroMunicipioId?: number | null
 }) {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [clientes, setClientes] = useState<Cliente[]>(clientesIniciales)
   const [busqueda, setBusqueda] = useState(searchParams.get('buscar') ?? '')
   const [resultadosBusqueda, setResultadosBusqueda] = useState<Cliente[] | null>(null)
@@ -129,6 +130,26 @@ export default function ClientesExplorer({
       setClientes((prev) => prev.map((c) => (c.id === cliente.id ? cliente : c)))
       setResultadosBusqueda((prev) => prev && prev.map((c) => (c.id === cliente.id ? cliente : c)))
     }
+    router.refresh()
+  }
+
+  // Cuando se edita o se añade un domicilio dentro del modal, hay que
+  // reflejarlo también en la tarjeta de la lista principal (y en los
+  // resultados de búsqueda si los hay), no solo dentro del propio modal —
+  // si no, la tarjeta se queda con la dirección antigua hasta recargar.
+  function alCambiarDomicilioDeCliente(clienteId: number, domicilio: Domicilio, esNuevo: boolean) {
+    function actualizarLista(prev: Cliente[]) {
+      return prev.map((c) => {
+        if (c.id !== clienteId) return c
+        const domicilios = esNuevo
+          ? [...c.domicilios, domicilio]
+          : c.domicilios.map((d) => (d.id === domicilio.id ? domicilio : d))
+        return { ...c, domicilios }
+      })
+    }
+    setClientes(actualizarLista)
+    setResultadosBusqueda((prev) => (prev ? actualizarLista(prev) : prev))
+    router.refresh()
   }
 
   return (
@@ -233,6 +254,7 @@ export default function ClientesExplorer({
           municipios={municipios}
           onCerrar={() => setModalAbierto(false)}
           onGuardado={alGuardarCliente}
+          onDomicilioCambiado={alCambiarDomicilioDeCliente}
         />
       )}
     </div>
@@ -317,11 +339,13 @@ function ModalCliente({
   municipios,
   onCerrar,
   onGuardado,
+  onDomicilioCambiado,
 }: {
   cliente: Cliente | null
   municipios: Municipio[]
   onCerrar: () => void
   onGuardado: (cliente: Cliente, esNuevo: boolean) => void
+  onDomicilioCambiado: (clienteId: number, domicilio: Domicilio, esNuevo: boolean) => void
 }) {
   const [nombre, setNombre] = useState(cliente?.nombre ?? '')
   const [telefono, setTelefono] = useState(cliente?.telefono ?? '')
@@ -397,10 +421,12 @@ function ModalCliente({
     setDomicilios((prev) => [...prev, domicilio])
     setCreandoDomicilioNuevo(false)
     setDomicilioSeleccionadoId(domicilio.id)
+    if (clienteIdActual) onDomicilioCambiado(clienteIdActual, domicilio, true)
   }
 
   function alActualizarDomicilio(domicilio: Domicilio) {
     setDomicilios((prev) => prev.map((d) => (d.id === domicilio.id ? domicilio : d)))
+    if (clienteIdActual) onDomicilioCambiado(clienteIdActual, domicilio, false)
   }
 
   const domicilioSeleccionado = domicilios.find((d) => d.id === domicilioSeleccionadoId) ?? null
