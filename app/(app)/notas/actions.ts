@@ -12,7 +12,7 @@ export async function buscarClientes(termino: string) {
 
   const { data, error } = await supabase
     .from('clientes')
-    .select('id, nombre, telefono, telefono2, email, domicilios ( id, direccion, zona, municipios ( nombre ) )')
+    .select('id, nombre, telefono, telefono2, email, otros_datos, lpd_firmado, domicilios ( id, direccion, zona, municipios ( nombre ) )')
     .or(`nombre.ilike.%${t}%,telefono.ilike.%${t}%`)
     .limit(10)
 
@@ -25,16 +25,18 @@ export async function crearClienteRapido(datos: {
   telefono: string
   telefono2?: string
   email?: string
-  lpd_firmado?: boolean
+  otros_datos?: string
 }) {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('clientes')
     .insert(datos)
-    .select('id, nombre, telefono, telefono2, email')
+    .select('id, nombre, telefono, telefono2, email, otros_datos, lpd_firmado')
     .single()
+
   if (error) throw new Error('No se pudo crear el cliente.')
-  return data
+  revalidatePath('/clientes')
+  return { ...data, domicilios: [] }
 }
 
 export async function crearDomicilioRapido(datos: {
@@ -49,7 +51,9 @@ export async function crearDomicilioRapido(datos: {
     .insert(datos)
     .select('id, direccion, zona, municipios ( nombre )')
     .single()
+
   if (error) throw new Error('No se pudo crear el domicilio.')
+  revalidatePath('/clientes')
   return data
 }
 
@@ -162,7 +166,7 @@ export async function enviarNotaACalendarioAction(notaId: number) {
     return Array.isArray(valor) ? (valor[0] ?? null) : valor
   }
 
-  const cliente  = unoOnulo(nota.clientes)
+  const cliente   = unoOnulo(nota.clientes)
   const domicilio = unoOnulo(nota.domicilios)
   const municipio = domicilio ? unoOnulo(domicilio.municipios) : null
   const tipoNota  = unoOnulo(nota.tipo_notas)
@@ -178,21 +182,21 @@ export async function enviarNotaACalendarioAction(notaId: number) {
   // en los campos de altura dinámica), enlazamos directamente a la página de
   // impresión de la app, que se ve perfectamente y siempre está actualizada.
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? ''
-  const pdfUrl = `${baseUrl}/notas-imprimir/${notaId}`
+  const pdfUrl  = `${baseUrl}/notas-imprimir/${notaId}`
 
   const resultado = await enviarNotaAlCalendario({
-    numeroNota: numero,
-    tipoNota: tipoNota?.nombre ?? '',
-    fechaCitaISO: nota.dia_cita,
-    horaCitaHHMM: nota.hora_cita.slice(0, 5),
+    numeroNota:      numero,
+    tipoNota:        tipoNota?.nombre ?? '',
+    fechaCitaISO:    nota.dia_cita,
+    horaCitaHHMM:    nota.hora_cita.slice(0, 5),
     duracionMinutos: 30,
-    direccion: domicilio
+    direccion:       domicilio
       ? `${domicilio.direccion}${municipio?.nombre ? ', ' + municipio.nombre : ''}`
       : '',
-    nombreCliente: cliente?.nombre ?? '—',
+    nombreCliente:   cliente?.nombre ?? '—',
     telefonoCliente: cliente?.telefono ?? '',
-    observaciones: nota.observaciones ?? '',
-    colorAsignado: asignado?.color ?? null,
+    observaciones:   nota.observaciones ?? '',
+    colorAsignado:   asignado?.color ?? null,
     pdfUrl,
   })
 
