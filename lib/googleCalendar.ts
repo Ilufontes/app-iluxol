@@ -1,5 +1,4 @@
 import { google } from 'googleapis'
-import { Readable } from 'stream'
 
 // Mapea el mismo color que ya usamos en la app para cada asignado (hexadecimal)
 // a uno de los "colorId" predefinidos que acepta la API de Google Calendar.
@@ -74,35 +73,67 @@ export async function enviarNotaAlCalendario(datos: DatosEventoNota): Promise<Re
   }
 
   const auth = obtenerCredenciales()
-  const drive = google.drive({ version: 'v3', auth })
   const calendar = google.calendar({ version: 'v3', auth })
 
   // 1. Subir el PDF a la carpeta de Drive compartida.
-  // La API de Drive (via googleapis) espera un stream legible real con
-  // .pipe(), no un Buffer plano — hay que envolverlo con Readable.from().
-  const pdfStream = Readable.from(Buffer.from(datos.pdfBytes))
+  // Se usa una petición REST directa (fetch) en vez del método de la librería
+  // googleapis para la subida, porque en entornos serverless (Vercel) el
+  // cliente de la librería falla internamente al esperar un stream con
+  // .pipe() que no siempre está disponible — fetch con multipart evita
+  // ese problema por completo, ya que no depende de esa lógica interna.
+  await auth.authorize()
+  const tokenAcceso = auth.credentials.access_token
+  if (!tokenAcceso) throw new Error('No se pudo autenticar con Google.')
 
-  const subida = await drive.files.create({
-    requestBody: {
-      name: datos.pdfNombreArchivo,
-      parents: [carpetaDriveId],
-    },
-    media: {
-      mimeType: 'application/pdf',
-      body: pdfStream,
-    },
-    fields: 'id, webViewLink',
+  const limite = 'iluxol_pdf_boundary'
+  const metadatos = JSON.stringify({
+    name: datos.pdfNombreArchivo,
+    parents: [carpetaDriveId],
   })
+  const cuerpoMultipart =
+    `--${limite}\r\n` +
+    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+    `${metadatos}\r\n` +
+    `--${limite}\r\n` +
+    'Content-Type: application/pdf\r\n\r\n'
 
-  const archivoId = subida.data.id
+  const cuerpoCompletoBytes = Buffer.concat([
+    Buffer.from(cuerpoMultipart, 'utf-8'),
+    Buffer.from(datos.pdfBytes),
+    Buffer.from(`\r\n--${limite}--`, 'utf-8'),
+  ])
+
+  const respuestaSubida = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${tokenAcceso}`,
+        'Content-Type': `multipart/related; boundary=${limite}`,
+      },
+      body: cuerpoCompletoBytes,
+    }
+  )
+
+  if (!respuestaSubida.ok) {
+    const detalle = await respuestaSubida.text()
+    throw new Error(`No se pudo subir el PDF a Drive: ${detalle}`)
+  }
+
+  const subidaData = await respuestaSubida.json() as { id: string; webViewLink?: string }
+  const archivoId = subidaData.id
   if (!archivoId) throw new Error('No se pudo subir el PDF a Drive.')
 
   // El adjunto de un evento de Calendar necesita que el archivo de Drive
   // sea al menos visible por cualquiera con el enlace (si no, el adjunto
   // aparece roto para quien abra el evento sin haber sido invitado).
-  await drive.permissions.create({
-    fileId: archivoId,
-    requestBody: { role: 'reader', type: 'anyone' },
+  await fetch(`https://www.googleapis.com/drive/v3/files/${archivoId}/permissions`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${tokenAcceso}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ role: 'reader', type: 'anyone' }),
   })
 
   // 2. Construir fecha/hora de inicio y fin del evento, en hora local de
@@ -137,7 +168,7 @@ export async function enviarNotaAlCalendario(datos: DatosEventoNota): Promise<Re
       attachments: [
         {
           fileId: archivoId,
-          fileUrl: subida.data.webViewLink ?? `https://drive.google.com/file/d/${archivoId}/view`,
+          fileUrl: subidaData.webViewLink ?? `https://drive.google.com/file/d/${archivoId}/view`,
           title: datos.pdfNombreArchivo,
           mimeType: 'application/pdf',
         },
