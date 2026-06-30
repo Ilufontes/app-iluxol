@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import {
   buscarClientes,
   crearClienteRapido,
@@ -23,6 +23,7 @@ type ClienteResultado = {
   telefono: string | null
   telefono2?: string | null
   email?: string | null
+  lpd_firmado?: boolean | null
   domicilios: DomicilioCliente[]
 }
 
@@ -74,8 +75,10 @@ export default function NotasExplorer({
   const [modalAbierto, setModalAbierto] = useState(false)
   const [notaEditando, setNotaEditando] = useState<NotaListado | null>(null)
   const [notaDetalle, setNotaDetalle] = useState<NotaListado | null>(null)
+  const [avisoLopdCliente, setAvisoLopdCliente] = useState<{ id: number; nombre: string } | null>(null)
 
   const searchParams = useSearchParams()
+  const router = useRouter()
 
   // Si se llega con ?nota=NUMERO (por ejemplo desde "Volver a la nota" en Clientes),
   // se abre directamente su panel de detalle, sin que haya que buscarla a mano.
@@ -163,7 +166,7 @@ export default function NotasExplorer({
     setModalAbierto(true)
   }
 
-  function alGuardar(nota: NotaListado, esNueva: boolean) {
+  function alGuardar(nota: NotaListado, esNueva: boolean, cliente: ClienteResultado) {
     if (esNueva) {
       // Solo insertamos en caliente si estamos viendo la primera página
       // (las notas nuevas son siempre las de número más alto, que aparecen ahí).
@@ -174,6 +177,11 @@ export default function NotasExplorer({
       setNotas((prev) => prev.map((n) => (n.id === nota.id ? nota : n)))
     }
     setModalAbierto(false)
+    router.refresh()
+
+    if (!cliente.lpd_firmado) {
+      setAvisoLopdCliente({ id: cliente.id, nombre: cliente.nombre })
+    }
   }
 
   const asignadoActivo = asignados.find((a) => a.id === filtroAsignadoId)
@@ -286,6 +294,34 @@ export default function NotasExplorer({
           onCerrar={() => setNotaDetalle(null)}
           onEditar={() => abrirEdicion(notaDetalle)}
         />
+      )}
+
+      {avisoLopdCliente && (
+        <div style={overlayStyle}>
+          <div style={{ background: '#fff', borderRadius: 12, width: 380, maxWidth: '90vw', padding: '1.5rem' }}>
+            <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 500, color: '#1c2230' }}>
+              LOPD pendiente
+            </h3>
+            <p style={{ fontSize: 13, color: '#374151', margin: '0 0 20px' }}>
+              <strong>{avisoLopdCliente.nombre}</strong> todavía no tiene el documento de protección de
+              datos firmado. ¿Quieres imprimirlo ahora o lo dejas para más adelante?
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button onClick={() => setAvisoLopdCliente(null)} style={botonSecundario}>
+                Descartar
+              </button>
+              <a
+                href={`/clientes-lopd/${avisoLopdCliente.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setAvisoLopdCliente(null)}
+                style={{ ...botonPrimario, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}
+              >
+                Imprimir LOPD
+              </a>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
@@ -421,7 +457,7 @@ function ModalNota({
   llevarOpciones: Opcion[]
   municipios: Opcion[]
   onCerrar: () => void
-  onGuardada: (nota: NotaListado, esNueva: boolean) => void
+  onGuardada: (nota: NotaListado, esNueva: boolean, cliente: ClienteResultado) => void
 }) {
   const esEdicion = !!notaEditando
 
@@ -586,7 +622,7 @@ function ModalNota({
       const nota = esEdicion
         ? await actualizarNota(notaEditando!.id, payload)
         : await crearNota(payload)
-      onGuardada(normalizarNotaGuardada(nota), !esEdicion)
+      onGuardada(normalizarNotaGuardada(nota), !esEdicion, clienteSeleccionado)
     } catch {
       setError(`No se pudo ${esEdicion ? 'actualizar' : 'guardar'} la nota. Inténtalo de nuevo.`)
     } finally {
