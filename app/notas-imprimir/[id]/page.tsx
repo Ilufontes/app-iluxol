@@ -1,4 +1,5 @@
-import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 
@@ -29,10 +30,27 @@ function contarLineasAproximadas(texto: string, caracteresPorLinea: number): num
   return total
 }
 
+// Devuelve el cliente adecuado según el contexto:
+// - Si hay SERVICE_ROLE_KEY disponible, usa el cliente admin (bypasea RLS,
+//   funciona tanto para usuarios logueados como para el enlace de Calendar).
+// - Si no, usa el cliente normal con sesión (solo funciona para logueados).
+async function crearClienteParaImprimir() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+
+  if (serviceKey) {
+    return createSupabaseClient(url, serviceKey, {
+      auth: { persistSession: false },
+    })
+  }
+
+  // Fallback: cliente normal con sesión de usuario
+  return await createClient()
+}
+
 async function cargarNota(id: string) {
-  // Usamos el cliente admin para bypasear RLS — esta página es pública
-  // (accesible desde el enlace del evento de Google Calendar sin login).
-  const supabase = createAdminClient()
+  const supabase = await crearClienteParaImprimir()
+
   const { data: notaCruda, error } = await supabase
     .from('notas')
     .select(`
@@ -50,9 +68,9 @@ async function cargarNota(id: string) {
 
   return {
     ...notaCruda,
-    clientes:       unoOnulo(notaCruda.clientes),
-    tipo_notas:     unoOnulo(notaCruda.tipo_notas),
-    asignados:      unoOnulo(notaCruda.asignados),
+    clientes:        unoOnulo(notaCruda.clientes),
+    tipo_notas:      unoOnulo(notaCruda.tipo_notas),
+    asignados:       unoOnulo(notaCruda.asignados),
     llevar_opciones: unoOnulo(notaCruda.llevar_opciones),
     domicilios: (() => {
       const d = unoOnulo(notaCruda.domicilios)
@@ -111,9 +129,7 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
       <style>{`
         * { box-sizing: border-box; }
         .pagina-imprimir { width: 720px; margin: 24px auto; font-family: system-ui, -apple-system, sans-serif; color: #1c2230; background: #fff; padding: 18px; }
-        @media screen {
-          body { background: #f4f5f7; }
-        }
+        @media screen { body { background: #f4f5f7; } }
         .barra-acciones { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 16px; }
         .barra-acciones button {
           height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid #d1d5db;
@@ -124,9 +140,7 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
         td.etiqueta, .etiqueta { font-weight: 600; font-size: 10.5px; background: #eaecef; white-space: nowrap; width: 125px; }
         .cabecera { background: #eceef1; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #1c2230; border-bottom: none; }
         td.etiqueta, .etiqueta, .cabecera, .titulo-apuntes {
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-          color-adjust: exact;
+          -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact;
         }
         .titulo-cabecera { font-size: 20px; font-weight: 300; letter-spacing: 4px; margin: 0; }
         .logo-cabecera { height: 30px; object-fit: contain; }
