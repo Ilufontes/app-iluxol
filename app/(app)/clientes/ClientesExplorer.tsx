@@ -441,16 +441,25 @@ function ModalCliente({
             padding: '18px 1.5rem', position: 'relative', flexShrink: 0,
           }}>
             <div style={{ display: 'flex', gap: 8, position: 'absolute', top: 12, right: 14 }}>
-              {clienteIdActual && (
-                <a
-                  href={`/clientes-lopd/${clienteIdActual}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ height: 26, padding: '0 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 12, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}
-                >
-                  LOPD
-                </a>
-              )}
+              {clienteIdActual && (() => {
+                // Usa el domicilio que esté seleccionado en la ficha.
+                // Si no hay ninguno seleccionado, usa el primero disponible.
+                const domicilioLopd = domicilioSeleccionadoId ?? (domicilios[0]?.id ?? null)
+                const urlLopd = domicilioLopd
+                  ? `/clientes-lopd/${clienteIdActual}?domicilio=${domicilioLopd}`
+                  : `/clientes-lopd/${clienteIdActual}`
+                return (
+                  <a
+                    href={urlLopd}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={domicilios.length > 1 ? 'Selecciona un domicilio en la ficha para cambiar cuál aparece en el LOPD' : undefined}
+                    style={{ height: 26, padding: '0 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 12, display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}
+                  >
+                    LOPD{domicilios.length > 1 ? ` (${domicilios.findIndex(d => d.id === domicilioLopd) + 1}/${domicilios.length})` : ''}
+                  </a>
+                )
+              })()}
               <button onClick={onCerrar} style={{ ...botonCerrar, color: '#fff', background: 'rgba(255,255,255,0.15)', borderRadius: '50%' }}>×</button>
             </div>
             <h2 style={{ margin: 0, fontSize: 17, fontWeight: 500, color: '#fff' }}>
