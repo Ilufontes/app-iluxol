@@ -30,37 +30,69 @@ function contarLineasAproximadas(texto: string, caracteresPorLinea: number): num
   return total
 }
 
-// Si SUPABASE_SERVICE_ROLE_KEY está configurada usa el cliente admin
-// (bypasea RLS → funciona sin login desde el enlace de Calendar).
-// Si no, usa el cliente normal con sesión (funciona para empleados logueados).
-async function crearClienteParaImprimir() {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  if (serviceKey) {
-    return createSupabaseClient(url, serviceKey, {
-      auth: { persistSession: false },
-    })
-  }
-  return await createClient()
-}
+const SELECT_NOTA = `
+  id, numero_nota, fecha_entrada, observaciones, dia_cita, hora_cita,
+  clientes ( nombre, telefono, telefono2, email ),
+  domicilios ( direccion, zona, municipios ( nombre ) ),
+  tipo_notas ( nombre ),
+  asignados ( nombre ),
+  llevar_opciones ( nombre )
+`
 
 async function cargarNota(id: string) {
-  const supabase = await crearClienteParaImprimir()
-  const { data: notaCruda, error } = await supabase
+  // Estrategia:
+  // 1. Siempre intentamos con el cliente de sesión primero.
+  //    Para empleados logueados (clic desde la app) esto siempre funciona.
+  // 2. Si no hay sesión (enlace desde Calendar), usamos el cliente admin
+  //    con SUPABASE_SERVICE_ROLE_KEY para bypassear RLS.
+  // 3. Si tampoco hay service key, devolvemos null (acceso denegado).
+
+  const clienteSesion = await createClient()
+  const { data: { user } } = await clienteSesion.auth.getUser()
+
+  if (user) {
+    // Empleado logueado → cliente de sesión con RLS
+    const { data, error } = await clienteSesion
+      .from('notas')
+      .select(SELECT_NOTA)
+      .eq('id', id)
+      .single()
+
+    if (error) {
+      console.error('[notas-imprimir] Error con cliente de sesión:', error.message)
+      return null
+    }
+    return normalizarNota(data)
+  }
+
+  // Sin sesión → intentar con service role (para enlace de Calendar)
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+
+  if (!serviceKey || !url) {
+    console.error('[notas-imprimir] Sin sesión y sin SUPABASE_SERVICE_ROLE_KEY. Acceso denegado.')
+    return null
+  }
+
+  const clienteAdmin = createSupabaseClient(url, serviceKey, {
+    auth: { persistSession: false },
+  })
+
+  const { data, error } = await clienteAdmin
     .from('notas')
-    .select(`
-      id, numero_nota, fecha_entrada, observaciones, dia_cita, hora_cita,
-      clientes ( nombre, telefono, telefono2, email ),
-      domicilios ( direccion, zona, municipios ( nombre ) ),
-      tipo_notas ( nombre ),
-      asignados ( nombre ),
-      llevar_opciones ( nombre )
-    `)
+    .select(SELECT_NOTA)
     .eq('id', id)
     .single()
 
-  if (error || !notaCruda) return null
+  if (error) {
+    console.error('[notas-imprimir] Error con cliente admin:', error.message)
+    return null
+  }
 
+  return normalizarNota(data)
+}
+
+function normalizarNota(notaCruda: any) {
   return {
     ...notaCruda,
     clientes:        unoOnulo(notaCruda.clientes),
