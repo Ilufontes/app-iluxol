@@ -30,27 +30,22 @@ function contarLineasAproximadas(texto: string, caracteresPorLinea: number): num
   return total
 }
 
-// Devuelve el cliente adecuado según el contexto:
-// - Si hay SERVICE_ROLE_KEY disponible, usa el cliente admin (bypasea RLS,
-//   funciona tanto para usuarios logueados como para el enlace de Calendar).
-// - Si no, usa el cliente normal con sesión (solo funciona para logueados).
+// Si SUPABASE_SERVICE_ROLE_KEY está configurada usa el cliente admin
+// (bypasea RLS → funciona sin login desde el enlace de Calendar).
+// Si no, usa el cliente normal con sesión (funciona para empleados logueados).
 async function crearClienteParaImprimir() {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-
   if (serviceKey) {
     return createSupabaseClient(url, serviceKey, {
       auth: { persistSession: false },
     })
   }
-
-  // Fallback: cliente normal con sesión de usuario
   return await createClient()
 }
 
 async function cargarNota(id: string) {
   const supabase = await crearClienteParaImprimir()
-
   const { data: notaCruda, error } = await supabase
     .from('notas')
     .select(`
@@ -83,7 +78,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params
   const nota = await cargarNota(id)
   if (!nota) return { title: 'Orden de trabajo - Iluxol' }
-
   const numero = nota.numero_nota ?? nota.id
   const nombreCliente = nota.clientes?.nombre ?? 'Cliente'
   return { title: `${numero} - ${nombreCliente}` }
@@ -92,7 +86,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function ImprimirNotaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const nota = await cargarNota(id)
-
   if (!nota) notFound()
 
   const nombreAsignado = nota.asignados?.nombre ?? ''
@@ -131,17 +124,12 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
         .pagina-imprimir { width: 720px; margin: 24px auto; font-family: system-ui, -apple-system, sans-serif; color: #1c2230; background: #fff; padding: 18px; }
         @media screen { body { background: #f4f5f7; } }
         .barra-acciones { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 16px; }
-        .barra-acciones button {
-          height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid #d1d5db;
-          background: #fff; font-size: 13px; cursor: pointer;
-        }
+        .barra-acciones button { height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid #d1d5db; background: #fff; font-size: 13px; cursor: pointer; }
         table.orden { width: 100%; border-collapse: collapse; border: 2px solid #1c2230; page-break-inside: avoid; }
         table.orden td { border: 1.2px solid #1c2230; padding: 6px 12px; font-size: 12.5px; vertical-align: top; }
         td.etiqueta, .etiqueta { font-weight: 600; font-size: 10.5px; background: #eaecef; white-space: nowrap; width: 125px; }
         .cabecera { background: #eceef1; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #1c2230; border-bottom: none; }
-        td.etiqueta, .etiqueta, .cabecera, .titulo-apuntes {
-          -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact;
-        }
+        td.etiqueta, .etiqueta, .cabecera, .titulo-apuntes { -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
         .titulo-cabecera { font-size: 20px; font-weight: 300; letter-spacing: 4px; margin: 0; }
         .logo-cabecera { height: 30px; object-fit: contain; }
         @media print {
@@ -204,19 +192,14 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
             <tr>
               <td className="etiqueta" style={{ verticalAlign: 'top' }}>OBSERVACIONES</td>
               <td colSpan={3} style={{ padding: 0 }}>
-                <div style={{
-                  minHeight: `${alturaObservacionesMm}mm`, padding: '6px 12px', fontSize: '12.5px',
-                  whiteSpace: 'pre-wrap',
-                }}>
+                <div style={{ minHeight: `${alturaObservacionesMm}mm`, padding: '6px 12px', fontSize: '12.5px', whiteSpace: 'pre-wrap' }}>
                   {nota.observaciones || '—'}
                 </div>
               </td>
             </tr>
             <tr>
               <td className="etiqueta">FECHA CITA / HORA</td>
-              <td>
-                {formatearFecha(nota.dia_cita)}{nota.hora_cita ? ` · ${nota.hora_cita.slice(0, 5)}` : ''}
-              </td>
+              <td>{formatearFecha(nota.dia_cita)}{nota.hora_cita ? ` · ${nota.hora_cita.slice(0, 5)}` : ''}</td>
               <td className="etiqueta">LLEVAR</td>
               <td>{nota.llevar_opciones?.nombre ?? '—'}</td>
             </tr>
@@ -226,10 +209,7 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
             </tr>
             <tr>
               <td colSpan={4} style={{ padding: 0 }}>
-                <div className="titulo-apuntes" style={{
-                  width: '100%', fontWeight: 600, fontSize: '10.5px', background: '#f3f4f6',
-                  borderBottom: '1.2px solid #1c2230', padding: '6px 12px', boxSizing: 'border-box',
-                }}>
+                <div className="titulo-apuntes" style={{ width: '100%', fontWeight: 600, fontSize: '10.5px', background: '#f3f4f6', borderBottom: '1.2px solid #1c2230', padding: '6px 12px', boxSizing: 'border-box' }}>
                   APUNTES Y MEDICIONES
                 </div>
                 <div style={{ height: `${alturaRecuadroApuntesMm}mm` }} />
@@ -239,11 +219,7 @@ export default async function ImprimirNotaPage({ params }: { params: Promise<{ i
         </table>
       </div>
 
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `document.getElementById('btn-imprimir').addEventListener('click', function(){ window.print(); });`,
-        }}
-      />
+      <script dangerouslySetInnerHTML={{ __html: `document.getElementById('btn-imprimir').addEventListener('click', function(){ window.print(); });` }} />
     </>
   )
 }
