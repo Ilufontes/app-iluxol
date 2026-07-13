@@ -395,6 +395,7 @@ function normalizarCliente(c: any): ClienteResultado {
       id: d.id,
       direccion: d.direccion,
       zona: d.zona ?? null,
+      datos_vivienda: d.datos_vivienda ?? null,
       municipios: Array.isArray(d.municipios) ? (d.municipios[0] ?? null) : d.municipios,
     })),
   }
@@ -475,6 +476,7 @@ function ModalNota({
                 id: notaEditando.domicilio_id ?? notaEditando.domicilios.id ?? 0,
                 direccion: notaEditando.domicilios.direccion,
                 zona: notaEditando.domicilios.zona ?? null,
+                datos_vivienda: (notaEditando.domicilios as any).datos_vivienda ?? null,
                 municipios: notaEditando.domicilios.municipios,
               }]
             : [],
@@ -783,35 +785,6 @@ function ModalNota({
                 <option key={d.id} value={d.id}>{d.direccion} — {d.municipios?.nombre ?? ''}</option>
               ))}
             </select>
-            {/* Datos de la vivienda del domicilio seleccionado (solo lectura) */}
-            {(() => {
-              const domSeleccionado = clienteSeleccionado?.domicilios.find(d => d.id === domicilioId)
-              if (!domSeleccionado?.datos_vivienda) return null
-              return (
-                <div style={{ marginTop: 8 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#92611a', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                    Datos de la vivienda
-                  </span>
-                  <textarea
-                    readOnly
-                    value={domSeleccionado.datos_vivienda}
-                    rows={3}
-                    style={{
-                      ...inputBase,
-                      marginTop: 4,
-                      height: 'auto',
-                      padding: 8,
-                      resize: 'vertical',
-                      background: '#fffbf3',
-                      border: '1px solid #efd9b3',
-                      color: '#374151',
-                      cursor: 'default',
-                    }}
-                  />
-                </div>
-              )
-            })()}
-
             <button
               onClick={() => setMostrandoFormDomicilio((v) => !v)}
               disabled={!clienteSeleccionado}
