@@ -10,6 +10,7 @@ const ENLACES = [
   { href: '/notas', etiqueta: 'Notas', color: '#5B7FFF' },
   { href: '/clientes', etiqueta: 'Clientes', color: '#3DCB9A' },
   { href: '/buscar', etiqueta: 'Buscador', color: '#A89BF0' },
+  { href: '/tipologias', etiqueta: 'Tipologías', color: '#F59E0B' },
   { href: '/ajustes', etiqueta: 'Ajustes', color: '#9CA3AF' },
 ]
 
