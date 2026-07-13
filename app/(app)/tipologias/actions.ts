@@ -7,9 +7,29 @@ import { revalidatePath } from 'next/cache'
 
 export type VariableClave = 'ancho_total' | 'alto_total' | 'alto_izquierda' | 'alto_derecha'
 
-export type FilaTipologia =
-  | { id?: number; tipo: 'variable'; variable_clave: VariableClave; posicion: number }
-  | { id?: number; tipo: 'perfil'; nombre_perfil: string; formula: string; unidades: number; posicion: number }
+// Tipos separados para evitar problemas con Omit sobre uniones discriminadas
+export type FilaVariable = {
+  id?: number
+  tipo: 'variable'
+  variable_clave: VariableClave
+  posicion: number
+}
+
+export type FilaPerfil = {
+  id?: number
+  tipo: 'perfil'
+  nombre_perfil: string
+  formula: string
+  unidades: number
+  posicion: number
+}
+
+export type FilaTipologia = FilaVariable | FilaPerfil
+
+// Tipos sin id (para crear/editar)
+export type FilaVariableNueva = Omit<FilaVariable, 'id'>
+export type FilaPerfilNueva   = Omit<FilaPerfil, 'id'>
+export type FilaNueva         = FilaVariableNueva | FilaPerfilNueva
 
 export type Tipologia = {
   id: number
@@ -39,7 +59,7 @@ export async function cargarTipologias(): Promise<Tipologia[]> {
 export async function crearTipologia(datos: {
   nombre: string
   notas?: string
-  filas: Omit<FilaTipologia, 'id'>[]
+  filas: FilaNueva[]
 }): Promise<Tipologia> {
   const supabase = await createClient()
 
@@ -57,9 +77,9 @@ export async function crearTipologia(datos: {
       posicion: i,
       tipo: f.tipo,
       variable_clave: f.tipo === 'variable' ? f.variable_clave : null,
-      nombre_perfil: f.tipo === 'perfil' ? f.nombre_perfil : null,
-      formula: f.tipo === 'perfil' ? f.formula : null,
-      unidades: f.tipo === 'perfil' ? f.unidades : null,
+      nombre_perfil:  f.tipo === 'perfil'   ? f.nombre_perfil  : null,
+      formula:        f.tipo === 'perfil'   ? f.formula        : null,
+      unidades:       f.tipo === 'perfil'   ? f.unidades       : null,
     }))
     await supabase.from('tipologia_filas').insert(filasParaInsertar)
   }
@@ -72,7 +92,7 @@ export async function crearTipologia(datos: {
 
 export async function actualizarTipologia(
   id: number,
-  datos: { nombre: string; notas?: string; filas: Omit<FilaTipologia, 'id'>[] }
+  datos: { nombre: string; notas?: string; filas: FilaNueva[] }
 ): Promise<void> {
   const supabase = await createClient()
 
@@ -90,9 +110,9 @@ export async function actualizarTipologia(
       posicion: i,
       tipo: f.tipo,
       variable_clave: f.tipo === 'variable' ? f.variable_clave : null,
-      nombre_perfil: f.tipo === 'perfil' ? f.nombre_perfil : null,
-      formula: f.tipo === 'perfil' ? f.formula : null,
-      unidades: f.tipo === 'perfil' ? f.unidades : null,
+      nombre_perfil:  f.tipo === 'perfil'   ? f.nombre_perfil  : null,
+      formula:        f.tipo === 'perfil'   ? f.formula        : null,
+      unidades:       f.tipo === 'perfil'   ? f.unidades       : null,
     }))
     await supabase.from('tipologia_filas').insert(filasParaInsertar)
   }
