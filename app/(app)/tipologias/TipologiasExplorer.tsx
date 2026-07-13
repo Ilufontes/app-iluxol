@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { Tipologia, FilaTipologia, VariableClave } from './actions'
+import type { Tipologia, FilaTipologia, FilaNueva, FilaVariableNueva, FilaPerfilNueva, VariableClave } from './actions'
 import {
   crearTipologia,
   actualizarTipologia,
@@ -31,17 +31,17 @@ function evaluarFormula(formula: string, variables: Record<string, number>): str
 // ─── CONSTANTES VISUALES ──────────────────────────────────────────────────────
 
 const VARIABLES_DISPONIBLES: { clave: VariableClave; etiqueta: string }[] = [
-  { clave: 'ancho_total', etiqueta: 'Ancho Total' },
-  { clave: 'alto_total', etiqueta: 'Alto Total' },
+  { clave: 'ancho_total',    etiqueta: 'Ancho Total' },
+  { clave: 'alto_total',     etiqueta: 'Alto Total' },
   { clave: 'alto_izquierda', etiqueta: 'Alto Izquierda' },
-  { clave: 'alto_derecha', etiqueta: 'Alto Derecha' },
+  { clave: 'alto_derecha',   etiqueta: 'Alto Derecha' },
 ]
 
 const ETIQUETA_VARIABLE: Record<VariableClave, string> = {
-  ancho_total: 'Ancho Total',
-  alto_total: 'Alto Total',
+  ancho_total:    'Ancho Total',
+  alto_total:     'Alto Total',
   alto_izquierda: 'Alto Izq.',
-  alto_derecha: 'Alto Der.',
+  alto_derecha:   'Alto Der.',
 }
 
 const inp: React.CSSProperties = {
@@ -55,24 +55,23 @@ const btn = (color: string, txt = '#fff'): React.CSSProperties => ({
 
 // ─── EDITOR DE FILAS ──────────────────────────────────────────────────────────
 
-function EditorFilas({
-  filas,
-  onChange,
-}: {
-  filas: Omit<FilaTipologia, 'id'>[]
-  onChange: (filas: Omit<FilaTipologia, 'id'>[]) => void
+function EditorFilas({ filas, onChange }: {
+  filas: FilaNueva[]
+  onChange: (filas: FilaNueva[]) => void
 }) {
   function añadir(tipo: 'variable' | 'perfil') {
     const posicion = filas.length
     if (tipo === 'variable') {
-      onChange([...filas, { tipo: 'variable', variable_clave: 'ancho_total', posicion }])
+      const nueva: FilaVariableNueva = { tipo: 'variable', variable_clave: 'ancho_total', posicion }
+      onChange([...filas, nueva])
     } else {
-      onChange([...filas, { tipo: 'perfil', nombre_perfil: '', formula: '', unidades: 1, posicion }])
+      const nueva: FilaPerfilNueva = { tipo: 'perfil', nombre_perfil: '', formula: '', unidades: 1, posicion }
+      onChange([...filas, nueva])
     }
   }
 
-  function actualizar(idx: number, cambios: Partial<FilaTipologia>) {
-    onChange(filas.map((f, i) => i === idx ? { ...f, ...cambios } as any : f))
+  function actualizar(idx: number, cambios: Partial<FilaVariableNueva> | Partial<FilaPerfilNueva>) {
+    onChange(filas.map((f, i) => i === idx ? { ...f, ...cambios } as FilaNueva : f))
   }
 
   function eliminar(idx: number) {
@@ -89,7 +88,6 @@ function EditorFilas({
 
   return (
     <div>
-      {/* Lista de filas */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
         {filas.map((fila, idx) => (
           <div key={idx} style={{
@@ -98,13 +96,11 @@ function EditorFilas({
             border: `1px solid ${fila.tipo === 'variable' ? '#bbf7d0' : '#e2e8f0'}`,
             borderRadius: 8, padding: '7px 10px',
           }}>
-            {/* Mover */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               <button onClick={() => mover(idx, -1)} style={{ ...btn('#f3f4f6', '#374151'), padding: '1px 5px', fontSize: 10 }}>▲</button>
-              <button onClick={() => mover(idx, 1)}  style={{ ...btn('#f3f4f6', '#374151'), padding: '1px 5px', fontSize: 10 }}>▼</button>
+              <button onClick={() => mover(idx,  1)} style={{ ...btn('#f3f4f6', '#374151'), padding: '1px 5px', fontSize: 10 }}>▼</button>
             </div>
 
-            {/* Badge tipo */}
             <span style={{
               fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 5,
               background: fila.tipo === 'variable' ? '#16a34a' : '#3b82f6',
@@ -113,7 +109,6 @@ function EditorFilas({
               {fila.tipo === 'variable' ? 'MEDIDA' : 'PERFIL'}
             </span>
 
-            {/* Campos */}
             {fila.tipo === 'variable' ? (
               <select
                 value={fila.variable_clave}
@@ -139,8 +134,7 @@ function EditorFilas({
                   style={{ ...inp, flex: 2, fontFamily: 'monospace' }}
                 />
                 <input
-                  type="number"
-                  min={1}
+                  type="number" min={1}
                   value={fila.unidades}
                   onChange={e => actualizar(idx, { unidades: Number(e.target.value) })}
                   style={{ ...inp, width: 60, flexShrink: 0 }}
@@ -150,7 +144,6 @@ function EditorFilas({
               </>
             )}
 
-            {/* Eliminar */}
             <button onClick={() => eliminar(idx)} style={{ ...btn('#fee2e2', '#dc2626'), padding: '4px 8px', flexShrink: 0 }}>✕</button>
           </div>
         ))}
@@ -162,14 +155,9 @@ function EditorFilas({
         )}
       </div>
 
-      {/* Botones añadir */}
       <div style={{ display: 'flex', gap: 8 }}>
-        <button onClick={() => añadir('variable')} style={btn('#16a34a')}>
-          + Medida
-        </button>
-        <button onClick={() => añadir('perfil')} style={btn('#3b82f6')}>
-          + Perfil
-        </button>
+        <button onClick={() => añadir('variable')} style={btn('#16a34a')}>+ Medida</button>
+        <button onClick={() => añadir('perfil')}   style={btn('#3b82f6')}>+ Perfil</button>
       </div>
     </div>
   )
@@ -177,25 +165,19 @@ function EditorFilas({
 
 // ─── FORMULARIO TIPOLOGÍA ─────────────────────────────────────────────────────
 
-function FormularioTipologia({
-  inicial,
-  onGuardada,
-  onCancelar,
-}: {
+function FormularioTipologia({ inicial, onGuardada, onCancelar }: {
   inicial?: Tipologia
   onGuardada: (t: Tipologia) => void
   onCancelar: () => void
 }) {
-  const [nombre, setNombre] = useState(inicial?.nombre ?? '')
-  const [notas, setNotas] = useState(inicial?.notas ?? '')
-  const [filas, setFilas] = useState<Omit<FilaTipologia, 'id'>[]>(
-    inicial?.tipologia_filas ?? []
-  )
+  const [nombre, setNombre]   = useState(inicial?.nombre ?? '')
+  const [notas,  setNotas]    = useState(inicial?.notas ?? '')
+  const [filas,  setFilas]    = useState<FilaNueva[]>(inicial?.tipologia_filas ?? [])
   const [guardando, setGuardando] = useState(false)
-  const [error, setError] = useState('')
-  // Vista previa con medidas de ejemplo
-  const [prevAncho, setPrevAncho] = useState(600)
-  const [prevAlto, setPrevAlto] = useState(1000)
+  const [error,     setError]     = useState('')
+
+  const [prevAncho,  setPrevAncho]  = useState(600)
+  const [prevAlto,   setPrevAlto]   = useState(1000)
   const [prevAltIzq, setPrevAltIzq] = useState(1000)
   const [prevAltDer, setPrevAltDer] = useState(1000)
 
@@ -206,8 +188,7 @@ function FormularioTipologia({
 
   async function guardar() {
     if (!nombre.trim()) { setError('El nombre es obligatorio.'); return }
-    setGuardando(true)
-    setError('')
+    setGuardando(true); setError('')
     try {
       if (inicial) {
         await actualizarTipologia(inicial.id, { nombre, notas, filas })
@@ -223,47 +204,45 @@ function FormularioTipologia({
     }
   }
 
+  const filasVariable = filas.filter((f): f is FilaVariableNueva => f.tipo === 'variable')
+  const filasPerfil   = filas.filter((f): f is FilaPerfilNueva   => f.tipo === 'perfil')
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Nombre */}
       <div>
         <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>NOMBRE</label>
         <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Ej: Mosquitero Corredera" style={inp} />
       </div>
 
-      {/* Filas */}
       <div>
         <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 8 }}>FILAS</label>
         <EditorFilas filas={filas} onChange={setFilas} />
       </div>
 
-      {/* Vista previa */}
-      {filas.some(f => f.tipo === 'perfil') && (
+      {filasPerfil.length > 0 && (
         <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: 14 }}>
           <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 600, color: '#374151' }}>VISTA PREVIA CON MEDIDAS DE EJEMPLO</p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-            {filas.filter(f => f.tipo === 'variable').map((f, i) => (
-              f.tipo === 'variable' && (
-                <label key={i} style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11 }}>
-                  <span style={{ color: '#6b7280', fontWeight: 600 }}>{ETIQUETA_VARIABLE[f.variable_clave]}</span>
-                  <input
-                    type="number"
-                    value={
-                      f.variable_clave === 'ancho_total' ? prevAncho :
-                      f.variable_clave === 'alto_total' ? prevAlto :
-                      f.variable_clave === 'alto_izquierda' ? prevAltIzq : prevAltDer
-                    }
-                    onChange={e => {
-                      const v = Number(e.target.value)
-                      if (f.variable_clave === 'ancho_total') setPrevAncho(v)
-                      else if (f.variable_clave === 'alto_total') setPrevAlto(v)
-                      else if (f.variable_clave === 'alto_izquierda') setPrevAltIzq(v)
-                      else setPrevAltDer(v)
-                    }}
-                    style={{ ...inp, width: 90 }}
-                  />
-                </label>
-              )
+            {filasVariable.map((f, i) => (
+              <label key={i} style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11 }}>
+                <span style={{ color: '#6b7280', fontWeight: 600 }}>{ETIQUETA_VARIABLE[f.variable_clave]}</span>
+                <input
+                  type="number"
+                  value={
+                    f.variable_clave === 'ancho_total'    ? prevAncho  :
+                    f.variable_clave === 'alto_total'     ? prevAlto   :
+                    f.variable_clave === 'alto_izquierda' ? prevAltIzq : prevAltDer
+                  }
+                  onChange={e => {
+                    const v = Number(e.target.value)
+                    if      (f.variable_clave === 'ancho_total')    setPrevAncho(v)
+                    else if (f.variable_clave === 'alto_total')     setPrevAlto(v)
+                    else if (f.variable_clave === 'alto_izquierda') setPrevAltIzq(v)
+                    else                                             setPrevAltDer(v)
+                  }}
+                  style={{ ...inp, width: 90 }}
+                />
+              </label>
             ))}
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
@@ -276,30 +255,25 @@ function FormularioTipologia({
               </tr>
             </thead>
             <tbody>
-              {filas.filter(f => f.tipo === 'perfil').map((f, i) => (
-                f.tipo === 'perfil' && (
-                  <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '5px 10px' }}>{f.nombre_perfil || '—'}</td>
-                    <td style={{ padding: '5px 10px', fontFamily: 'monospace', color: '#6b7280' }}>{f.formula || '—'}</td>
-                    <td style={{ padding: '5px 10px', textAlign: 'center' }}>{f.unidades}</td>
-                    <td style={{ padding: '5px 10px', textAlign: 'right', fontWeight: 600 }}>
-                      {evaluarFormula(f.formula, variablesPreview)}
-                    </td>
-                  </tr>
-                )
+              {filasPerfil.map((f, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                  <td style={{ padding: '5px 10px' }}>{f.nombre_perfil || '—'}</td>
+                  <td style={{ padding: '5px 10px', fontFamily: 'monospace', color: '#6b7280' }}>{f.formula || '—'}</td>
+                  <td style={{ padding: '5px 10px', textAlign: 'center' }}>{f.unidades}</td>
+                  <td style={{ padding: '5px 10px', textAlign: 'right', fontWeight: 600 }}>
+                    {evaluarFormula(f.formula, variablesPreview)}
+                  </td>
+                </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* Notas */}
       <div>
         <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>NOTAS</label>
         <textarea
-          value={notas}
-          onChange={e => setNotas(e.target.value)}
-          rows={2}
+          value={notas} onChange={e => setNotas(e.target.value)} rows={2}
           placeholder="Observaciones sobre esta tipología…"
           style={{ ...inp, height: 'auto', resize: 'vertical' }}
         />
@@ -320,9 +294,9 @@ function FormularioTipologia({
 // ─── PANEL DE COLORES ─────────────────────────────────────────────────────────
 
 function PanelColores({ coloresIniciales }: { coloresIniciales: { id: number; nombre: string; activo: boolean }[] }) {
-  const [colores, setColores] = useState(coloresIniciales)
+  const [colores,    setColores]    = useState(coloresIniciales)
   const [nuevoColor, setNuevoColor] = useState('')
-  const [error, setError] = useState('')
+  const [error,      setError]      = useState('')
 
   async function añadir() {
     if (!nuevoColor.trim()) return
@@ -331,9 +305,7 @@ function PanelColores({ coloresIniciales }: { coloresIniciales: { id: number; no
       await crearColor(nuevoColor)
       setColores(prev => [...prev, { id: Date.now(), nombre: nuevoColor.trim().toUpperCase(), activo: true }])
       setNuevoColor('')
-    } catch (e: any) {
-      setError(e.message)
-    }
+    } catch (e: any) { setError(e.message) }
   }
 
   async function toggleColor(id: number, activo: boolean) {
@@ -346,8 +318,7 @@ function PanelColores({ coloresIniciales }: { coloresIniciales: { id: number; no
       <h3 style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 600, color: '#1c2230' }}>Colores</h3>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
         <input
-          value={nuevoColor}
-          onChange={e => setNuevoColor(e.target.value)}
+          value={nuevoColor} onChange={e => setNuevoColor(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && añadir()}
           placeholder="Ej: PLATA, BRONCE, BLANCO…"
           style={{ ...inp, flex: 1 }}
@@ -389,17 +360,16 @@ export default function TipologiasExplorer({
   coloresIniciales: { id: number; nombre: string; activo: boolean }[]
 }) {
   const [tipologias, setTipologias] = useState<Tipologia[]>(tipologiasIniciales)
-  const [modo, setModo] = useState<'lista' | 'nueva' | 'editar'>('lista')
-  const [editando, setEditando] = useState<Tipologia | null>(null)
-  const [expandida, setExpandida] = useState<number | null>(null)
+  const [modo,       setModo]       = useState<'lista' | 'nueva' | 'editar'>('lista')
+  const [editando,   setEditando]   = useState<Tipologia | null>(null)
+  const [expandida,  setExpandida]  = useState<number | null>(null)
 
   function onGuardada(t: Tipologia) {
     setTipologias(prev => {
       const existe = prev.find(x => x.id === t.id)
       return existe ? prev.map(x => x.id === t.id ? t : x) : [...prev, t]
     })
-    setModo('lista')
-    setEditando(null)
+    setModo('lista'); setEditando(null)
   }
 
   async function toggleActivo(id: number, activo: boolean) {
@@ -426,7 +396,6 @@ export default function TipologiasExplorer({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Cabecera */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: '#1c2230' }}>Tipologías</h2>
@@ -437,7 +406,6 @@ export default function TipologiasExplorer({
         <button onClick={() => setModo('nueva')} style={btn('#1c2230')}>+ Nueva tipología</button>
       </div>
 
-      {/* Lista de tipologías */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {tipologias.length === 0 && (
           <p style={{ color: '#9ca3af', textAlign: 'center', padding: 40 }}>
@@ -449,7 +417,6 @@ export default function TipologiasExplorer({
             background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12,
             overflow: 'hidden', opacity: t.activo ? 1 : 0.6,
           }}>
-            {/* Cabecera de la tipología */}
             <div
               style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', cursor: 'pointer' }}
               onClick={() => setExpandida(expandida === t.id ? null : t.id)}
@@ -472,18 +439,13 @@ export default function TipologiasExplorer({
               <button
                 onClick={e => { e.stopPropagation(); setEditando(t); setModo('editar') }}
                 style={btn('#f3f4f6', '#374151')}
-              >
-                Editar
-              </button>
+              >Editar</button>
               <button
                 onClick={e => { e.stopPropagation(); toggleActivo(t.id, !t.activo) }}
                 style={btn(t.activo ? '#fee2e2' : '#f0fdf4', t.activo ? '#dc2626' : '#16a34a')}
-              >
-                {t.activo ? 'Desactivar' : 'Activar'}
-              </button>
+              >{t.activo ? 'Desactivar' : 'Activar'}</button>
             </div>
 
-            {/* Detalle expandido */}
             {expandida === t.id && (
               <div style={{ borderTop: '1px solid #f3f4f6', padding: '12px 16px' }}>
                 {t.tipologia_filas.length === 0 ? (
@@ -505,7 +467,7 @@ export default function TipologiasExplorer({
                             <span style={{
                               fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
                               background: f.tipo === 'variable' ? '#dcfce7' : '#dbeafe',
-                              color: f.tipo === 'variable' ? '#16a34a' : '#1d4ed8',
+                              color:      f.tipo === 'variable' ? '#16a34a' : '#1d4ed8',
                             }}>
                               {f.tipo === 'variable' ? 'MEDIDA' : 'PERFIL'}
                             </span>
@@ -535,7 +497,6 @@ export default function TipologiasExplorer({
         ))}
       </div>
 
-      {/* Panel de colores */}
       <PanelColores coloresIniciales={coloresIniciales} />
     </div>
   )
