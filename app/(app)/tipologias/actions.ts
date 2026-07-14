@@ -5,19 +5,24 @@ import { revalidatePath } from 'next/cache'
 
 export type VariableClave = 'ancho_total' | 'alto_total' | 'alto_izquierda' | 'alto_derecha'
 
+export type TuboLado = 'superior' | 'inferior' | 'izquierda' | 'derecha'
+
 export type FilaVariable = {
   id?: number; tipo: 'variable'; variable_clave: VariableClave; posicion: number
 }
 export type FilaPerfil = {
   id?: number; tipo: 'perfil'; nombre_perfil: string; formula: string; unidades: number; posicion: number
 }
-export type FilaTipologia = FilaVariable | FilaPerfil
+export type FilaTubo = {
+  id?: number; tipo: 'tubo'; tubo_lado: TuboLado; unidades: number; posicion: number
+}
+export type FilaTipologia = FilaVariable | FilaPerfil | FilaTubo
+
 export type FilaVariableNueva = Omit<FilaVariable, 'id'>
 export type FilaPerfilNueva   = Omit<FilaPerfil, 'id'>
 export type FilaTubaNueva     = Omit<FilaTubo, 'id'>
 export type FilaNueva         = FilaVariableNueva | FilaPerfilNueva | FilaTubaNueva
 
-export type TuboLado = 'superior' | 'inferior' | 'izquierda' | 'derecha'
 export type TipoTubo = { id: number; nombre: string; descuento: number; activo: boolean }
 
 export type Tipologia = {
