@@ -14,6 +14,7 @@ export default function Sidebar({ nombreEmpleado }: { nombreEmpleado: string }) 
   const supabase = createClient()
 
   const enOrdenes = pathname.startsWith('/ordenes') || pathname.startsWith('/tipologias')
+  const enAjustesOrdenes = pathname === '/ordenes/ajustes'
   const [submenuAbierto, setSubmenuAbierto] = useState(enOrdenes)
 
   async function cerrarSesion() {
@@ -105,6 +106,10 @@ export default function Sidebar({ nombreEmpleado }: { nombreEmpleado: string }) 
               <Link href="/tipologias" style={subEnlaceStyle(pathname === '/tipologias')}>
                 <span style={{ width: 5, height: 5, borderRadius: '50%', flexShrink: 0, background: COLOR_ORDENES, opacity: 0.7 }} />
                 Tipologías
+              </Link>
+              <Link href="/ordenes/ajustes" style={subEnlaceStyle(enAjustesOrdenes)}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', flexShrink: 0, background: COLOR_ORDENES, opacity: 0.7 }} />
+                Ajustes
               </Link>
             </div>
           )}
