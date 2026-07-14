@@ -145,7 +145,7 @@ function EditorLinea({ linea, tipologias, colores, onChange, onEliminar }: {
         <div style={{ background: '#fff8ed', border: '1px solid #fed7aa', borderRadius: 8, padding: 10, marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: '#92400e' }}>
-              TUBOS {tipoTubo ? `${tipoTubo.nombre} · ${tipoTubo.descuento}mm descuento` : '(asigna un tipo de tubo en la tipología para calcular medidas)'}
+              TUBOS {tipoTubo ? `${tipoTubo?.nombre ?? ""} · ${tipoTubo?.descuento ?? 0}mm descuento` : '(asigna un tipo de tubo en la tipología para calcular medidas)'}
             </span>
             {/* Marco completo */}
             <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, cursor: 'pointer', fontWeight: 600, color: '#1c2230' }}>
@@ -201,13 +201,13 @@ function EditorLinea({ linea, tipologias, colores, onChange, onEliminar }: {
           return false
         })
         if (!tubosActivos.length) return null
-        const d = tipoTubo.descuento
+        const d = tipoTubo?.descuento ?? 0
         const laterales  = (linea.tubo_izquierda ? 1 : 0) + (linea.tubo_derecha  ? 1 : 0)
         const horizontales = (linea.tubo_superior ? 1 : 0) + (linea.tubo_inferior ? 1 : 0)
         return (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 6 }}>
             <thead><tr style={{ background: '#f59e0b' }}>
-              <th style={{ padding: '4px 8px', textAlign: 'left', color: '#1c2230' }}>Tubo {tipoTubo.nombre}</th>
+              <th style={{ padding: '4px 8px', textAlign: 'left', color: '#1c2230' }}>Tubo {tipoTubo?.nombre ?? ''}</th>
               <th style={{ padding: '4px 8px', textAlign: 'center', color: '#1c2230' }}>Ud.</th>
               <th style={{ padding: '4px 8px', textAlign: 'right', color: '#1c2230' }}>Corte mm</th>
             </tr></thead>
