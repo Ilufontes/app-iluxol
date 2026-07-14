@@ -66,17 +66,18 @@ function EditorFilas({ filas, onChange }: {
   function añadir(tipo: 'variable' | 'perfil' | 'tubo') {
     const posicion = filas.length
     if (tipo === 'variable') {
-      onChange([...filas, { tipo: 'variable', variable_clave: 'ancho_total', posicion } as FilaVariableNueva])
+      const nueva: FilaVariableNueva = { tipo: 'variable', variable_clave: 'ancho_total', posicion }
+      onChange([...filas, nueva])
     } else if (tipo === 'tubo') {
-      onChange([...filas, { tipo: 'tubo', tubo_lado: 'superior', unidades: 1, posicion } as FilaTubaNueva])
+      const nueva: FilaTubaNueva = { tipo: 'tubo', tubo_lado: 'superior', unidades: 1, posicion }
+      onChange([...filas, nueva])
     } else {
-      onChange([...filas, { tipo: 'perfil', nombre_perfil: '', formula: '', unidades: 1, posicion } as FilaPerfilNueva])
+      const nueva: FilaPerfilNueva = { tipo: 'perfil', nombre_perfil: '', formula: '', unidades: 1, posicion }
+      onChange([...filas, nueva])
     }
   }
 
-  // Usamos 'any' para cambios porque el tipo discriminado varía por rama
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function actualizar(idx: number, cambios: Record<string, any>) {
+  function actualizar(idx: number, cambios: Record<string, unknown>) {
     onChange(filas.map((f, i) => i === idx ? { ...f, ...cambios } as FilaNueva : f))
   }
 
@@ -95,48 +96,43 @@ function EditorFilas({ filas, onChange }: {
   return (
     <div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-        {filas.map((fila, idx) => {
-          const esVariable = fila.tipo === 'variable'
-          const esTubo     = fila.tipo === 'tubo'
-          const esPerfil   = fila.tipo === 'perfil'
-          const fV = fila as FilaVariableNueva
-          const fT = fila as FilaTubaNueva
-          const fP = fila as FilaPerfilNueva
+        {filas.map((fila, idx) => (
+          <div key={idx} style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            background: fila.tipo === 'variable' ? '#f0fdf4' : '#f8fafc',
+            border: `1px solid ${fila.tipo === 'variable' ? '#bbf7d0' : '#e2e8f0'}`,
+            borderRadius: 8, padding: '7px 10px',
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <button onClick={() => mover(idx, -1)} style={{ ...btn('#f3f4f6', '#374151'), padding: '1px 5px', fontSize: 10 }}>▲</button>
+              <button onClick={() => mover(idx,  1)} style={{ ...btn('#f3f4f6', '#374151'), padding: '1px 5px', fontSize: 10 }}>▼</button>
+            </div>
 
-          return (
-            <div key={idx} style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              background: esVariable ? '#f0fdf4' : esTubo ? '#fffbeb' : '#f8fafc',
-              border: `1px solid ${esVariable ? '#bbf7d0' : esTubo ? '#fde68a' : '#e2e8f0'}`,
-              borderRadius: 8, padding: '7px 10px',
+            <span style={{
+              fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 5,
+              background: fila.tipo === 'variable' ? '#16a34a' : fila.tipo === 'tubo' ? '#f59e0b' : '#3b82f6',
+              color: fila.tipo === 'tubo' ? '#1c2230' : '#fff', whiteSpace: 'nowrap', flexShrink: 0,
             }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <button onClick={() => mover(idx, -1)} style={{ ...btn('#f3f4f6', '#374151'), padding: '1px 5px', fontSize: 10 }}>▲</button>
-                <button onClick={() => mover(idx,  1)} style={{ ...btn('#f3f4f6', '#374151'), padding: '1px 5px', fontSize: 10 }}>▼</button>
-              </div>
+              {fila.tipo === 'variable' ? 'MEDIDA' : fila.tipo === 'tubo' ? 'TUBO' : 'PERFIL'}
+            </span>
 
-              <span style={{
-                fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 5,
-                background: esVariable ? '#16a34a' : esTubo ? '#f59e0b' : '#3b82f6',
-                color: esTubo ? '#1c2230' : '#fff', whiteSpace: 'nowrap', flexShrink: 0,
-              }}>
-                {esVariable ? 'MEDIDA' : esTubo ? 'TUBO' : 'PERFIL'}
-              </span>
-
-              {esVariable && (
-                <select value={fV.variable_clave}
-                  onChange={e => actualizar(idx, { variable_clave: e.target.value })}
+            {fila.tipo === 'variable' ? (() => {
+              const f = fila as FilaVariableNueva
+              return (
+                <select value={f.variable_clave}
+                  onChange={e => actualizar(idx, { variable_clave: e.target.value as VariableClave })}
                   style={{ ...inp, flex: 1 }}>
                   {VARIABLES_DISPONIBLES.map(v => (
                     <option key={v.clave} value={v.clave}>{v.etiqueta}</option>
                   ))}
                 </select>
-              )}
-
-              {esTubo && (
+              )
+            })() : fila.tipo === 'tubo' ? (() => {
+              const f = fila as FilaTubaNueva
+              return (
                 <>
-                  <select value={fT.tubo_lado}
-                    onChange={e => actualizar(idx, { tubo_lado: e.target.value })}
+                  <select value={f.tubo_lado}
+                    onChange={e => actualizar(idx, { tubo_lado: e.target.value as TuboLado })}
                     style={{ ...inp, flex: 2 }}>
                     <option value="superior">Superior</option>
                     <option value="inferior">Inferior</option>
@@ -144,38 +140,39 @@ function EditorFilas({ filas, onChange }: {
                     <option value="derecha">Derecha</option>
                   </select>
                   <span style={{ fontSize: 11, color: '#6b7280', flex: 2, alignSelf: 'center', paddingLeft: 4 }}>
-                    {fT.tubo_lado === 'superior' || fT.tubo_lado === 'inferior'
+                    {f.tubo_lado === 'superior' || f.tubo_lado === 'inferior'
                       ? 'ancho_total + (laterales × desc)'
-                      : fT.tubo_lado === 'izquierda' ? 'alto_izq + (horiz × desc)' : 'alto_der + (horiz × desc)'}
+                      : f.tubo_lado === 'izquierda' ? 'alto_izquierda + (horiz × desc)' : 'alto_derecha + (horiz × desc)'}
                   </span>
-                  <input type="number" min={1} value={fT.unidades}
+                  <input type="number" min={1} value={f.unidades}
                     onChange={e => actualizar(idx, { unidades: Number(e.target.value) })}
                     style={{ ...inp, width: 60, flexShrink: 0 }} title="Unidades" />
                   <span style={{ fontSize: 11, color: '#6b7280', flexShrink: 0 }}>ud</span>
                 </>
-              )}
-
-              {esPerfil && (
+              )
+            })() : (() => {
+              const f = fila as FilaPerfilNueva
+              return (
                 <>
-                  <input value={fP.nombre_perfil}
+                  <input value={f.nombre_perfil}
                     onChange={e => actualizar(idx, { nombre_perfil: e.target.value })}
                     placeholder="Perfil (ej: Cajón 35, Tubo 40x20…)"
                     style={{ ...inp, flex: 2 }} />
-                  <input value={fP.formula}
+                  <input value={f.formula}
                     onChange={e => actualizar(idx, { formula: e.target.value })}
                     placeholder="Fórmula (ej: ancho_total - 25)"
                     style={{ ...inp, flex: 2, fontFamily: 'monospace' }} />
-                  <input type="number" min={1} value={fP.unidades}
+                  <input type="number" min={1} value={f.unidades}
                     onChange={e => actualizar(idx, { unidades: Number(e.target.value) })}
                     style={{ ...inp, width: 60, flexShrink: 0 }} title="Unidades" />
                   <span style={{ fontSize: 11, color: '#6b7280', flexShrink: 0 }}>ud</span>
                 </>
-              )}
+              )
+            })()}
 
-              <button onClick={() => eliminar(idx)} style={{ ...btn('#fee2e2', '#dc2626'), padding: '4px 8px', flexShrink: 0 }}>✕</button>
-            </div>
-          )
-        })}
+            <button onClick={() => eliminar(idx)} style={{ ...btn('#fee2e2', '#dc2626'), padding: '4px 8px', flexShrink: 0 }}>✕</button>
+          </div>
+        ))}
 
         {filas.length === 0 && (
           <p style={{ color: '#9ca3af', fontSize: 13, textAlign: 'center', padding: '12px 0', margin: 0 }}>
@@ -569,20 +566,24 @@ export default function TipologiasExplorer({
                           <td style={{ padding: '5px 10px' }}>
                             <span style={{
                               fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
-                              background: f.tipo === 'variable' ? '#dcfce7' : '#dbeafe',
-                              color:      f.tipo === 'variable' ? '#16a34a' : '#1d4ed8',
+                              background: f.tipo === 'variable' ? '#dcfce7' : f.tipo === 'tubo' ? '#fef3c7' : '#dbeafe',
+                              color:      f.tipo === 'variable' ? '#16a34a' : f.tipo === 'tubo' ? '#92400e' : '#1d4ed8',
                             }}>
-                              {f.tipo === 'variable' ? 'MEDIDA' : 'PERFIL'}
+                              {f.tipo === 'variable' ? 'MEDIDA' : f.tipo === 'tubo' ? 'TUBO' : 'PERFIL'}
                             </span>
                           </td>
                           <td style={{ padding: '5px 10px' }}>
-                            {f.tipo === 'variable' ? ETIQUETA_VARIABLE[f.variable_clave] : f.nombre_perfil}
+                            {f.tipo === 'variable'
+                              ? ETIQUETA_VARIABLE[(f as any).variable_clave]
+                              : f.tipo === 'tubo'
+                              ? `Tubo ${(f as any).tubo_lado}`
+                              : (f as any).nombre_perfil}
                           </td>
                           <td style={{ padding: '5px 10px', fontFamily: 'monospace', color: '#6b7280' }}>
-                            {f.tipo === 'perfil' ? f.formula : '—'}
+                            {f.tipo === 'perfil' ? (f as any).formula : f.tipo === 'tubo' ? 'auto' : '—'}
                           </td>
                           <td style={{ padding: '5px 10px', textAlign: 'center' }}>
-                            {f.tipo === 'perfil' ? f.unidades : '—'}
+                            {f.tipo === 'perfil' || f.tipo === 'tubo' ? (f as any).unidades : '—'}
                           </td>
                         </tr>
                       ))}
