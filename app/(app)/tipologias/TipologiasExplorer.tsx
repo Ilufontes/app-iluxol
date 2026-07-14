@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Tipologia, TipoTubo, FilaTipologia, FilaNueva, FilaVariableNueva, FilaPerfilNueva, FilaTubaNueva, TuboLado, VariableClave } from './actions'
 import {
   crearTipologia,
@@ -206,12 +206,11 @@ function FormularioTipologia({ inicial, onGuardada, onCancelar }: {
   const [subiendoImg, setSubiendoImg] = useState(false)
   const [tiposTubo,   setTiposTubo]   = useState<TipoTubo[]>([])
   const [tipoTuboId,  setTipoTuboId]  = useState<number | null>(inicial?.tipo_tubo_id ?? null)
-  const [cargandoTubos, setCargandoTubos] = useState(false)
-
   // Cargar tipos de tubo al montar
-  useState(() => {
+  useEffect(() => {
     cargarTiposTubo().then(setTiposTubo).catch(() => {})
-  })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleImagen(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -574,7 +573,7 @@ export default function TipologiasExplorer({
                           </td>
                           <td style={{ padding: '5px 10px' }}>
                             {f.tipo === 'variable'
-                              ? ETIQUETA_VARIABLE[(f as any).variable_clave]
+                              ? ETIQUETA_VARIABLE[(f as any).variable_clave as VariableClave]
                               : f.tipo === 'tubo'
                               ? `Tubo ${(f as any).tubo_lado}`
                               : (f as any).nombre_perfil}
