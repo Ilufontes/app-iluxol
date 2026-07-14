@@ -1,13 +1,12 @@
-import { cargarOrdenes } from './actions'
-import { cargarTipologias, cargarColores } from '../tipologias/actions'
+import { cargarOrdenes, cargarTipologiasParaOrdenes, cargarColoresParaOrdenes } from './actions'
 import OrdenesExplorer from './OrdenesExplorer'
 import CabeceraSeccion from '@/components/CabeceraSeccion'
 
 export default async function OrdenesPage() {
   const [ordenes, tipologias, colores] = await Promise.all([
     cargarOrdenes(),
-    cargarTipologias(),
-    cargarColores(),
+    cargarTipologiasParaOrdenes(),
+    cargarColoresParaOrdenes(),
   ])
 
   return (
