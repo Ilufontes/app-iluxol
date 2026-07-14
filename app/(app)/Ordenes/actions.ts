@@ -25,11 +25,13 @@ export type OrdenTrabajo = {
   id: number
   numero_orden: number | null
   nota_id: number | null
+  numero_nota_rel: number | null   // numero_nota de la nota relacionada (cargado aparte)
+  tipo_nota_rel: string | null     // nombre del tipo de nota relacionada
   cliente_id: number | null
-  observaciones: string | null   // campo de texto de la orden (antes "notas", renombrado para evitar conflicto)
+  cliente_nombre: string | null
+  cliente_telefono: string | null
+  observaciones: string | null
   creado_en: string
-  cliente?: { nombre: string; telefono: string | null } | null
-  nota_rel?: { numero_nota: number | null; tipo_notas: { nombre: string } | null } | null
   orden_lineas: LineaOrden[]
 }
 
@@ -37,48 +39,69 @@ export type OrdenTrabajo = {
 
 export async function cargarOrdenes(): Promise<OrdenTrabajo[]> {
   const supabase = await createClient()
+
+  // Query simple: sin join a tabla notas para evitar conflicto de nombres
   const { data, error } = await supabase
     .from('ordenes_trabajo')
     .select(`
       id, numero_orden, nota_id, cliente_id, notas, creado_en,
       clientes ( nombre, telefono ),
-      nota_rel:notas!nota_id ( numero_nota, tipo_notas ( nombre ) ),
       orden_lineas (
         id, tipologia_id, color_id, ancho_total, alto_total,
         alto_izquierda, alto_derecha, unidades_totales, referencia, posicion,
-        tipologias ( id, nombre, notas, activo, tipologia_filas ( id, tipo, variable_clave, nombre_perfil, formula, unidades, posicion ) ),
+        tipologias (
+          id, nombre, activo, notas,
+          tipologia_filas ( id, tipo, variable_clave, nombre_perfil, formula, unidades, posicion )
+        ),
         colores ( nombre )
       )
     `)
     .order('numero_orden', { ascending: false })
 
-  if (error) throw new Error('No se pudieron cargar las órdenes.')
+  if (error) {
+    console.error('[cargarOrdenes]', error.message)
+    return []
+  }
 
-  function unoOnulo(v: any) { return Array.isArray(v) ? (v[0] ?? null) : v }
+  function uno(v: any) { return Array.isArray(v) ? (v[0] ?? null) : v }
 
-  return (data ?? []).map((o: any) => ({
-    id:            o.id,
-    numero_orden:  o.numero_orden,
-    nota_id:       o.nota_id,
-    cliente_id:    o.cliente_id,
-    observaciones: o.notas,
-    creado_en:     o.creado_en,
-    cliente:    unoOnulo(o.clientes),
-    nota_rel:   unoOnulo(o.nota_rel),
-    orden_lineas: [...(o.orden_lineas ?? [])]
-      .sort((a: any, b: any) => a.posicion - b.posicion)
-      .map((l: any) => ({
-        ...l,
-        color_nombre: unoOnulo(l.colores)?.nombre ?? null,
-        tipologia: l.tipologias
-          ? {
-              ...unoOnulo(l.tipologias),
-              tipologia_filas: [...(unoOnulo(l.tipologias)?.tipologia_filas ?? [])]
-                .sort((a: any, b: any) => a.posicion - b.posicion),
-            }
-          : null,
-      })),
-  }))
+  return (data ?? []).map((o: any) => {
+    const cliente = uno(o.clientes)
+    return {
+      id:               o.id,
+      numero_orden:     o.numero_orden,
+      nota_id:          o.nota_id,
+      numero_nota_rel:  null,   // se carga solo al abrir el formulario de edición
+      tipo_nota_rel:    null,
+      cliente_id:       o.cliente_id,
+      cliente_nombre:   cliente?.nombre   ?? null,
+      cliente_telefono: cliente?.telefono ?? null,
+      observaciones:    o.notas,
+      creado_en:        o.creado_en,
+      orden_lineas: [...(o.orden_lineas ?? [])]
+        .sort((a: any, b: any) => a.posicion - b.posicion)
+        .map((l: any) => {
+          const tip = uno(l.tipologias)
+          return {
+            id:               l.id,
+            tipologia_id:     l.tipologia_id,
+            color_id:         l.color_id,
+            color_nombre:     uno(l.colores)?.nombre ?? null,
+            ancho_total:      l.ancho_total,
+            alto_total:       l.alto_total,
+            alto_izquierda:   l.alto_izquierda,
+            alto_derecha:     l.alto_derecha,
+            unidades_totales: l.unidades_totales,
+            referencia:       l.referencia ?? '',
+            posicion:         l.posicion,
+            tipologia: tip ? {
+              ...tip,
+              tipologia_filas: [...(tip.tipologia_filas ?? [])].sort((a: any, b: any) => a.posicion - b.posicion),
+            } : null,
+          }
+        }),
+    }
+  })
 }
 
 // ─── CREAR ────────────────────────────────────────────────────────────────────
@@ -104,9 +127,16 @@ export async function crearOrden(datos: {
   if (error || !orden) throw new Error('No se pudo crear la orden.')
 
   if (datos.lineas.length > 0) {
-    await supabase.from('orden_lineas').insert(
-      datos.lineas.map((l, i) => ({ ...l, orden_id: orden.id, posicion: i }))
+    const { error: errLineas } = await supabase.from('orden_lineas').insert(
+      datos.lineas.map((l, i) => ({
+        orden_id: orden.id, posicion: i,
+        tipologia_id: l.tipologia_id, color_id: l.color_id,
+        ancho_total: l.ancho_total, alto_total: l.alto_total,
+        alto_izquierda: l.alto_izquierda, alto_derecha: l.alto_derecha,
+        unidades_totales: l.unidades_totales, referencia: l.referencia,
+      }))
     )
+    if (errLineas) console.error('[crearOrden lineas]', errLineas.message)
   }
 
   revalidatePath('/ordenes')
@@ -137,7 +167,13 @@ export async function actualizarOrden(
 
   if (datos.lineas.length > 0) {
     await supabase.from('orden_lineas').insert(
-      datos.lineas.map((l, i) => ({ ...l, orden_id: id, posicion: i }))
+      datos.lineas.map((l, i) => ({
+        orden_id: id, posicion: i,
+        tipologia_id: l.tipologia_id, color_id: l.color_id,
+        ancho_total: l.ancho_total, alto_total: l.alto_total,
+        alto_izquierda: l.alto_izquierda, alto_derecha: l.alto_derecha,
+        unidades_totales: l.unidades_totales, referencia: l.referencia,
+      }))
     )
   }
 
@@ -163,13 +199,13 @@ export async function buscarNotaParaOrden(numero: number) {
     .eq('numero_nota', numero)
     .single()
   if (!data) return null
-  function unoOnulo(v: any) { return Array.isArray(v) ? (v[0] ?? null) : v }
+  function uno(v: any) { return Array.isArray(v) ? (v[0] ?? null) : v }
   return {
-    id:         data.id,
+    id:          data.id,
     numero_nota: data.numero_nota,
-    cliente_id: data.cliente_id,
-    clientes:   unoOnulo((data as any).clientes),
-    tipo_notas: unoOnulo((data as any).tipo_notas),
+    cliente_id:  data.cliente_id,
+    clientes:    uno((data as any).clientes),
+    tipo_notas:  uno((data as any).tipo_notas),
   }
 }
 
