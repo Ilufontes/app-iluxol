@@ -36,7 +36,8 @@ export async function updateSession(request: NextRequest) {
 
   const esRutaPublica =
     request.nextUrl.pathname.startsWith('/login') ||
-    request.nextUrl.pathname.startsWith('/notas-imprimir')
+    request.nextUrl.pathname.startsWith('/notas-imprimir') ||
+    request.nextUrl.pathname.startsWith('/ordenes-imprimir')
 
   if (!user && !esRutaPublica) {
     const url = request.nextUrl.clone()
