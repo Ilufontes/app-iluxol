@@ -51,7 +51,6 @@ function EditorLinea({ linea, tipologias, colores, onChange, onEliminar }: {
   const tipologia = tipologias.find(t => t.id === linea.tipologia_id) ?? null
   const variables = tipologia?.tipologia_filas.filter(f => f.tipo === 'variable') ?? []
   const perfiles  = tipologia?.tipologia_filas.filter(f => f.tipo === 'perfil')  ?? []
-  const coloresActivos = colores.filter(c => c.activo)
 
   const medidas: Record<string, number> = {
     ancho_total:    linea.ancho_total    ?? 0,
@@ -63,6 +62,7 @@ function EditorLinea({ linea, tipologias, colores, onChange, onEliminar }: {
   return (
     <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 14, background: '#f8fafc' }}>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+
         <div style={{ flex: '2 1 200px' }}>
           <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 3 }}>TIPOLOGÍA</label>
           <select
@@ -70,7 +70,7 @@ function EditorLinea({ linea, tipologias, colores, onChange, onEliminar }: {
             onChange={e => onChange({ ...linea, tipologia_id: Number(e.target.value) })}
             style={inp}
           >
-            <option value="">Selecciona tipología…</option>
+            <option value="">Selecciona…</option>
             {tipologias.filter(t => t.activo).map(t => (
               <option key={t.id} value={t.id}>{t.nombre}</option>
             ))}
@@ -85,7 +85,7 @@ function EditorLinea({ linea, tipologias, colores, onChange, onEliminar }: {
             style={inp}
           >
             <option value="">—</option>
-            {coloresActivos.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+            {colores.filter(c => c.activo).map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
           </select>
         </div>
 
@@ -113,6 +113,7 @@ function EditorLinea({ linea, tipologias, colores, onChange, onEliminar }: {
         </div>
       </div>
 
+      {/* Medidas dinámicas */}
       {variables.length > 0 && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
           {variables.map((v, i) => {
@@ -133,6 +134,7 @@ function EditorLinea({ linea, tipologias, colores, onChange, onEliminar }: {
         </div>
       )}
 
+      {/* Cortes calculados en tiempo real */}
       {perfiles.length > 0 && tipologia && (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
@@ -164,7 +166,7 @@ function EditorLinea({ linea, tipologias, colores, onChange, onEliminar }: {
   )
 }
 
-// ─── FORMULARIO DE ORDEN ─────────────────────────────────────────────────────
+// ─── FORMULARIO ───────────────────────────────────────────────────────────────
 
 function FormularioOrden({ inicial, tipologias, colores, onGuardada, onCancelar }: {
   inicial?: OrdenTrabajo
@@ -173,17 +175,21 @@ function FormularioOrden({ inicial, tipologias, colores, onGuardada, onCancelar 
   onGuardada: (o: OrdenTrabajo) => void
   onCancelar: () => void
 }) {
-  const [busquedaNota,     setBusquedaNota]     = useState('')
-  const [notaEncontrada,   setNotaEncontrada]   = useState<any>(inicial?.nota_rel ?? null)
-  const [notaId,           setNotaId]           = useState<number | null>(inicial?.nota_id ?? null)
-  const [buscandoNota,     setBuscandoNota]     = useState(false)
-  const [errorNota,        setErrorNota]        = useState('')
+  const [busquedaNota,    setBusquedaNota]    = useState('')
+  const [notaInfo,        setNotaInfo]        = useState<any>(
+    inicial?.nota_id ? { id: inicial.nota_id, numero_nota: inicial.numero_nota_rel, tipo_notas: inicial.tipo_nota_rel ? { nombre: inicial.tipo_nota_rel } : null } : null
+  )
+  const [notaId,          setNotaId]          = useState<number | null>(inicial?.nota_id ?? null)
+  const [buscandoNota,    setBuscandoNota]    = useState(false)
+  const [errorNota,       setErrorNota]       = useState('')
 
-  const [busquedaCliente,    setBusquedaCliente]    = useState('')
-  const [clienteEncontrado,  setClienteEncontrado]  = useState<any>(inicial?.cliente ?? null)
-  const [clienteId,          setClienteId]          = useState<number | null>(inicial?.cliente_id ?? null)
-  const [resultadosCliente,  setResultadosCliente]  = useState<any[]>([])
-  const [buscandoCliente,    setBuscandoCliente]    = useState(false)
+  const [busquedaCliente,   setBusquedaCliente]   = useState('')
+  const [clienteInfo,       setClienteInfo]       = useState<any>(
+    inicial?.cliente_id ? { id: inicial.cliente_id, nombre: inicial.cliente_nombre, telefono: inicial.cliente_telefono } : null
+  )
+  const [clienteId,         setClienteId]         = useState<number | null>(inicial?.cliente_id ?? null)
+  const [resultadosCliente, setResultadosCliente] = useState<any[]>([])
+  const [buscandoCliente,   setBuscandoCliente]   = useState(false)
 
   const [observaciones, setObservaciones] = useState(inicial?.observaciones ?? '')
 
@@ -206,9 +212,9 @@ function FormularioOrden({ inicial, tipologias, colores, onGuardada, onCancelar 
     try {
       const n = await buscarNotaParaOrden(num)
       if (!n) { setErrorNota('No se encontró esa nota.'); return }
-      setNotaEncontrada(n); setNotaId(n.id)
-      if (!clienteId && n.clientes) { setClienteEncontrado(n.clientes); setClienteId(n.cliente_id) }
-    } catch { setErrorNota('Error al buscar la nota.') }
+      setNotaInfo(n); setNotaId(n.id)
+      if (!clienteId && n.clientes) { setClienteInfo(n.clientes); setClienteId(n.cliente_id) }
+    } catch { setErrorNota('Error al buscar.') }
     finally   { setBuscandoNota(false) }
   }
 
@@ -220,9 +226,9 @@ function FormularioOrden({ inicial, tipologias, colores, onGuardada, onCancelar 
   }
 
   function añadirLinea() {
-    const primeraActiva = tipologias.find(t => t.activo)
+    const primera = tipologias.find(t => t.activo)
     setLineas(prev => [...prev, {
-      tipologia_id: primeraActiva?.id ?? 0, color_id: null,
+      tipologia_id: primera?.id ?? 0, color_id: null,
       ancho_total: null, alto_total: null, alto_izquierda: null, alto_derecha: null,
       unidades_totales: 1, referencia: '', posicion: prev.length,
     }])
@@ -236,13 +242,29 @@ function FormularioOrden({ inicial, tipologias, colores, onGuardada, onCancelar 
       const datos = { nota_id: notaId, cliente_id: clienteId, observaciones, lineas }
       if (inicial) {
         await actualizarOrden(inicial.id, datos)
-        onGuardada({ ...inicial, ...datos, orden_lineas: lineas as any })
+        onGuardada({
+          ...inicial,
+          nota_id: notaId,
+          numero_nota_rel: notaInfo?.numero_nota ?? null,
+          tipo_nota_rel: notaInfo?.tipo_notas?.nombre ?? null,
+          cliente_id: clienteId,
+          cliente_nombre: clienteInfo?.nombre ?? null,
+          cliente_telefono: clienteInfo?.telefono ?? null,
+          observaciones,
+          orden_lineas: lineas as any,
+        })
       } else {
         const nueva = await crearOrden(datos)
         onGuardada({
-          id: nueva.id, numero_orden: null, nota_id: notaId, cliente_id: clienteId,
-          observaciones, creado_en: new Date().toISOString(),
-          cliente: clienteEncontrado, nota_rel: notaEncontrada,
+          id: nueva.id, numero_orden: null,
+          nota_id: notaId,
+          numero_nota_rel: notaInfo?.numero_nota ?? null,
+          tipo_nota_rel: notaInfo?.tipo_notas?.nombre ?? null,
+          cliente_id: clienteId,
+          cliente_nombre: clienteInfo?.nombre ?? null,
+          cliente_telefono: clienteInfo?.telefono ?? null,
+          observaciones,
+          creado_en: new Date().toISOString(),
           orden_lineas: lineas as any,
         })
       }
@@ -256,13 +278,13 @@ function FormularioOrden({ inicial, tipologias, colores, onGuardada, onCancelar 
       {/* Nota relacionada */}
       <div style={{ ...card, padding: 16 }}>
         <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 600, color: '#374151' }}>NOTA RELACIONADA (opcional)</p>
-        {notaEncontrada ? (
+        {notaInfo ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 13, flex: 1 }}>
-              Nota <strong>#{notaEncontrada.numero_nota}</strong>
-              {notaEncontrada.tipo_notas?.nombre ? ` — ${notaEncontrada.tipo_notas.nombre}` : ''}
+              Nota <strong>#{notaInfo.numero_nota}</strong>
+              {notaInfo.tipo_notas?.nombre ? ` — ${notaInfo.tipo_notas.nombre}` : ''}
             </span>
-            <button onClick={() => { setNotaEncontrada(null); setNotaId(null); setBusquedaNota('') }} style={btn('#f3f4f6', '#374151')}>Quitar</button>
+            <button onClick={() => { setNotaInfo(null); setNotaId(null); setBusquedaNota('') }} style={btn('#f3f4f6', '#374151')}>Quitar</button>
           </div>
         ) : (
           <div style={{ display: 'flex', gap: 8 }}>
@@ -283,13 +305,13 @@ function FormularioOrden({ inicial, tipologias, colores, onGuardada, onCancelar 
       {/* Cliente */}
       <div style={{ ...card, padding: 16 }}>
         <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 600, color: '#374151' }}>CLIENTE (opcional)</p>
-        {clienteEncontrado ? (
+        {clienteInfo ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 13, flex: 1 }}>
-              <strong>{clienteEncontrado.nombre}</strong>
-              {clienteEncontrado.telefono ? ` — ${clienteEncontrado.telefono}` : ''}
+              <strong>{clienteInfo.nombre}</strong>
+              {clienteInfo.telefono ? ` — ${clienteInfo.telefono}` : ''}
             </span>
-            <button onClick={() => { setClienteEncontrado(null); setClienteId(null); setBusquedaCliente('') }} style={btn('#f3f4f6', '#374151')}>Quitar</button>
+            <button onClick={() => { setClienteInfo(null); setClienteId(null); setBusquedaCliente('') }} style={btn('#f3f4f6', '#374151')}>Quitar</button>
           </div>
         ) : (
           <>
@@ -309,7 +331,7 @@ function FormularioOrden({ inicial, tipologias, colores, onGuardada, onCancelar 
                 {resultadosCliente.map(c => (
                   <div
                     key={c.id}
-                    onClick={() => { setClienteEncontrado(c); setClienteId(c.id); setResultadosCliente([]) }}
+                    onClick={() => { setClienteInfo(c); setClienteId(c.id); setResultadosCliente([]) }}
                     style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #f3f4f6' }}
                     onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}
@@ -367,17 +389,17 @@ function FormularioOrden({ inicial, tipologias, colores, onGuardada, onCancelar 
   )
 }
 
-// ─── VISTA DE ORDEN ───────────────────────────────────────────────────────────
+// ─── VISTA EXPANDIDA ─────────────────────────────────────────────────────────
 
 function VistaOrden({ orden }: { orden: OrdenTrabajo }) {
   return (
     <div>
       <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', marginBottom: 16, fontSize: 13 }}>
-        {orden.cliente && (
-          <span><strong>Cliente:</strong> {orden.cliente.nombre}{orden.cliente.telefono ? ` — ${orden.cliente.telefono}` : ''}</span>
+        {orden.cliente_nombre && (
+          <span><strong>Cliente:</strong> {orden.cliente_nombre}{orden.cliente_telefono ? ` — ${orden.cliente_telefono}` : ''}</span>
         )}
-        {orden.nota_rel && (
-          <span><strong>Nota:</strong> #{orden.nota_rel.numero_nota}{orden.nota_rel.tipo_notas?.nombre ? ` — ${orden.nota_rel.tipo_notas.nombre}` : ''}</span>
+        {orden.nota_id && (
+          <span><strong>Nota:</strong> #{orden.numero_nota_rel ?? orden.nota_id}</span>
         )}
         {orden.observaciones && (
           <span style={{ color: '#6b7280', fontStyle: 'italic' }}>{orden.observaciones}</span>
@@ -399,12 +421,12 @@ function VistaOrden({ orden }: { orden: OrdenTrabajo }) {
               <div style={{ background: '#1c2230', color: '#fff', padding: '8px 14px', display: 'flex', gap: 16, fontSize: 13, flexWrap: 'wrap' }}>
                 <strong>{tip?.nombre ?? '—'}</strong>
                 {linea.color_nombre && <span>Color: <strong>{linea.color_nombre}</strong></span>}
-                <span>Unidades: <strong>{linea.unidades_totales}</strong></span>
+                <span>Uds: <strong>{linea.unidades_totales}</strong></span>
                 {linea.referencia && <span style={{ color: '#aab1c0' }}>{linea.referencia}</span>}
-                {linea.ancho_total    != null && <span>A: <strong>{linea.ancho_total}</strong></span>}
-                {linea.alto_total     != null && <span>H: <strong>{linea.alto_total}</strong></span>}
-                {linea.alto_izquierda != null && <span>H.Izq: <strong>{linea.alto_izquierda}</strong></span>}
-                {linea.alto_derecha   != null && <span>H.Der: <strong>{linea.alto_derecha}</strong></span>}
+                {linea.ancho_total    != null && <span>A: {linea.ancho_total}</span>}
+                {linea.alto_total     != null && <span>H: {linea.alto_total}</span>}
+                {linea.alto_izquierda != null && <span>H.Izq: {linea.alto_izquierda}</span>}
+                {linea.alto_derecha   != null && <span>H.Der: {linea.alto_derecha}</span>}
               </div>
               {perfiles.length > 0 && (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -443,9 +465,7 @@ function VistaOrden({ orden }: { orden: OrdenTrabajo }) {
 
 // ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
 
-export default function OrdenesExplorer({
-  ordenesIniciales, tipologias, colores,
-}: {
+export default function OrdenesExplorer({ ordenesIniciales, tipologias, colores }: {
   ordenesIniciales: OrdenTrabajo[]
   tipologias: Tipologia[]
   colores: { id: number; nombre: string; activo: boolean }[]
@@ -465,7 +485,7 @@ export default function OrdenesExplorer({
   }
 
   async function onEliminar(id: number) {
-    if (!confirm('¿Eliminar esta orden de trabajo?')) return
+    if (!confirm('¿Eliminar esta orden?')) return
     setEliminando(id)
     await eliminarOrden(id)
     setOrdenes(prev => prev.filter(o => o.id !== id))
@@ -517,11 +537,15 @@ export default function OrdenesExplorer({
               <span style={{ fontWeight: 600, fontSize: 15, color: '#1c2230' }}>
                 Orden #{o.numero_orden ?? o.id}
               </span>
-              {o.cliente && <span style={{ marginLeft: 10, fontSize: 13, color: '#6b7280' }}>{o.cliente.nombre}</span>}
+              {o.cliente_nombre && (
+                <span style={{ marginLeft: 10, fontSize: 13, color: '#6b7280' }}>{o.cliente_nombre}</span>
+              )}
               <span style={{ marginLeft: 10, fontSize: 12, color: '#9ca3af' }}>
                 {o.orden_lineas.length} {o.orden_lineas.length === 1 ? 'línea' : 'líneas'}
               </span>
-              {o.observaciones && <span style={{ marginLeft: 10, fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>· {o.observaciones}</span>}
+              {o.observaciones && (
+                <span style={{ marginLeft: 10, fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>· {o.observaciones}</span>
+              )}
             </div>
             <span style={{ fontSize: 12, color: '#9ca3af' }}>
               {new Date(o.creado_en).toLocaleDateString('es-ES')}
