@@ -30,7 +30,7 @@ async function cargarOrden(id: number) {
         id, tipologia_id, color_id,
         ancho_total, alto_total, alto_izquierda, alto_derecha,
         unidades_totales, referencia, posicion,
-        tubo_superior, tubo_inferior, tubo_izquierda, tubo_derecha,
+        tubo_superior, tubo_inferior, tubo_izquierda, tubo_derecha, tipo_tubo_id,
         tipologias (
           id, nombre, imagen_url, tipo_tubo_id,
           tipos_tubo ( id, nombre, descuento ),
@@ -51,6 +51,8 @@ async function cargarOrden(id: number) {
     const { data: nota } = await supabase.from('notas').select('numero_nota').eq('id', (o as any).nota_id).single()
     numero_nota = nota?.numero_nota ?? null
   }
+  const { data: ttData } = await supabase.from('tipos_tubo').select('id, nombre, descuento')
+  const ttMap: Record<number, { id: number; nombre: string; descuento: number }> = Object.fromEntries((ttData ?? []).map((t: any) => [t.id, t]))
 
   const lineas = [...((o as any).orden_lineas ?? [])]
     .sort((a: any, b: any) => a.posicion - b.posicion)
@@ -60,7 +62,7 @@ async function cargarOrden(id: number) {
       return {
         tipologia_nombre: tip?.nombre ?? '—',
         tipologia_imagen: tip?.imagen_url ?? null,
-        tipo_tubo:        tipoTubo,
+        tipo_tubo:        l.tipo_tubo_id ? ttMap[l.tipo_tubo_id] ?? tipoTubo : tipoTubo,
         tipologia_filas:  tip ? [...(tip.tipologia_filas ?? [])].sort((a: any, b: any) => a.posicion - b.posicion) : [],
         color_nombre:     uno(l.colores)?.nombre ?? null,
         ancho_total:      l.ancho_total    ?? 0,
@@ -73,6 +75,7 @@ async function cargarOrden(id: number) {
         tubo_inferior:    l.tubo_inferior  ?? false,
         tubo_izquierda:   l.tubo_izquierda ?? false,
         tubo_derecha:     l.tubo_derecha   ?? false,
+        tipo_tubo_id:     l.tipo_tubo_id   ?? null,
       }
     })
 
@@ -236,27 +239,30 @@ export default async function OrdenesImprimirPage({ params }: { params: Promise<
                             <td className="r">{evalFormula(p.formula, medidas)}</td>
                           </tr>
                         ))}
-                        {tubosActivos.length > 0 && linea.tipo_tubo && (
-                          <>
-                            <tr className="tubo-sep"><td colSpan={4}>TUBOS {linea.tipo_tubo.nombre}</td></tr>
-                            {tubosActivos.map((t: any, j: number) => {
-                              const horiz = t.tubo_lado === 'superior' || t.tubo_lado === 'inferior'
-                              const medida = horiz
-                                ? medidas.ancho_total + laterales * d
-                                : t.tubo_lado === 'izquierda'
-                                  ? medidas.alto_izquierda + horizontales * d
-                                  : medidas.alto_derecha + horizontales * d
-                              return (
+                                        {linea.tipo_tubo && (linea.tubo_superior || linea.tubo_inferior || linea.tubo_izquierda || linea.tubo_derecha) && (() => {
+                          const tt = linea.tipo_tubo!
+                          const td = tt.descuento
+                          const lat = (linea.tubo_izquierda ? 1 : 0) + (linea.tubo_derecha  ? 1 : 0)
+                          const hor = (linea.tubo_superior  ? 1 : 0) + (linea.tubo_inferior ? 1 : 0)
+                          const lados: {lado: string; medida: number}[] = []
+                          if (linea.tubo_superior)  lados.push({ lado: 'Superior',  medida: medidas.ancho_total    + lat * td })
+                          if (linea.tubo_inferior)  lados.push({ lado: 'Inferior',  medida: medidas.ancho_total    + lat * td })
+                          if (linea.tubo_izquierda) lados.push({ lado: 'Izquierda', medida: medidas.alto_izquierda + hor * td })
+                          if (linea.tubo_derecha)   lados.push({ lado: 'Derecha',   medida: medidas.alto_derecha   + hor * td })
+                          return (
+                            <>
+                              <tr className="tubo-sep"><td colSpan={4}>TUBOS {tt.nombre} ({td}mm desc.)</td></tr>
+                              {lados.map((t, j) => (
                                 <tr key={j} style={{ background: '#fffbf4' }}>
-                                  <td style={{ color: '#92400e', textTransform: 'capitalize' }}>{t.tubo_lado}</td>
-                                  <td className="f">{horiz ? `ancho+${laterales}×${d}` : `alto+${horizontales}×${d}`}</td>
-                                  <td className="c">{t.tubo_unidades ?? 1}</td>
-                                  <td className="r-tubo">{medida}</td>
+                                  <td style={{ color: '#92400e' }}>{t.lado}</td>
+                                  <td className="f">{t.lado==='Superior'||t.lado==='Inferior'?`ancho+${lat}×${td}`:`alto+${hor}×${td}`}</td>
+                                  <td className="c">1</td>
+                                  <td className="r-tubo">{t.medida}</td>
                                 </tr>
-                              )
-                            })}
-                          </>
-                        )}
+                              ))}
+                            </>
+                          )
+                        })()}
                       </tbody>
                     </table>
                   )}
