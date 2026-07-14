@@ -21,7 +21,8 @@ function evalFormula(formula: string, vars: Record<string, number>): string {
 }
 
 const ETIQ_VAR: Record<VariableClave, string> = {
-  ancho_total: 'Ancho', alto_total: 'Alto', alto_izquierda: 'Alto Izq.', alto_derecha: 'Alto Der.',
+  ancho_total: 'Ancho', alto_total: 'Alto',
+  alto_izquierda: 'Alto Izq.', alto_derecha: 'Alto Der.',
 }
 
 // ─── ESTILOS ──────────────────────────────────────────────────────────────────
@@ -38,11 +39,9 @@ const card: React.CSSProperties = {
   background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden',
 }
 
-// ─── LÍNEA DE ORDEN (editor) ─────────────────────────────────────────────────
+// ─── EDITOR DE LÍNEA ─────────────────────────────────────────────────────────
 
-function EditorLinea({
-  linea, tipologias, colores, onChange, onEliminar,
-}: {
+function EditorLinea({ linea, tipologias, colores, onChange, onEliminar }: {
   linea: Omit<LineaOrden, 'id' | 'tipologia' | 'color_nombre'>
   tipologias: Tipologia[]
   colores: { id: number; nombre: string; activo: boolean }[]
@@ -64,7 +63,6 @@ function EditorLinea({
   return (
     <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 14, background: '#f8fafc' }}>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-        {/* Tipología */}
         <div style={{ flex: '2 1 200px' }}>
           <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 3 }}>TIPOLOGÍA</label>
           <select
@@ -79,7 +77,6 @@ function EditorLinea({
           </select>
         </div>
 
-        {/* Color */}
         <div style={{ flex: '1 1 120px' }}>
           <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 3 }}>COLOR</label>
           <select
@@ -92,7 +89,6 @@ function EditorLinea({
           </select>
         </div>
 
-        {/* Unidades */}
         <div style={{ flex: '0 0 80px' }}>
           <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 3 }}>UNIDADES</label>
           <input
@@ -102,13 +98,12 @@ function EditorLinea({
           />
         </div>
 
-        {/* Referencia */}
         <div style={{ flex: '2 1 150px' }}>
           <label style={{ fontSize: 11, fontWeight: 600, color: '#6b7280', display: 'block', marginBottom: 3 }}>REFERENCIA</label>
           <input
             value={linea.referencia}
             onChange={e => onChange({ ...linea, referencia: e.target.value })}
-            placeholder="Ej: Hueco salón, dormitorio…"
+            placeholder="Ej: Hueco salón…"
             style={inp}
           />
         </div>
@@ -118,7 +113,6 @@ function EditorLinea({
         </div>
       </div>
 
-      {/* Medidas dinámicas según variables de la tipología */}
       {variables.length > 0 && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
           {variables.map((v, i) => {
@@ -139,13 +133,12 @@ function EditorLinea({
         </div>
       )}
 
-      {/* Vista previa de cortes */}
       {perfiles.length > 0 && tipologia && (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
             <tr style={{ background: '#1c2230', color: '#fff' }}>
               <th style={{ padding: '5px 8px', textAlign: 'left' }}>Perfil</th>
-              <th style={{ padding: '5px 8px', textAlign: 'left', fontFamily: 'monospace' }}>Fórmula</th>
+              <th style={{ padding: '5px 8px', textAlign: 'left', fontFamily: 'monospace', fontWeight: 400 }}>Fórmula</th>
               <th style={{ padding: '5px 8px', textAlign: 'center' }}>Ud.</th>
               <th style={{ padding: '5px 8px', textAlign: 'right' }}>Corte (mm)</th>
             </tr>
@@ -173,49 +166,38 @@ function EditorLinea({
 
 // ─── FORMULARIO DE ORDEN ─────────────────────────────────────────────────────
 
-function FormularioOrden({
-  inicial, tipologias, colores, onGuardada, onCancelar,
-}: {
+function FormularioOrden({ inicial, tipologias, colores, onGuardada, onCancelar }: {
   inicial?: OrdenTrabajo
   tipologias: Tipologia[]
   colores: { id: number; nombre: string; activo: boolean }[]
   onGuardada: (o: OrdenTrabajo) => void
   onCancelar: () => void
 }) {
-  // Enlace opcional a nota
-  const [busquedaNota, setBusquedaNota]     = useState('')
-  const [notaEncontrada, setNotaEncontrada] = useState<any>(inicial?.nota ?? null)
-  const [notaId, setNotaId]                 = useState<number | null>(inicial?.nota_id ?? null)
-  const [buscandoNota, setBuscandoNota]     = useState(false)
-  const [errorNota, setErrorNota]           = useState('')
+  const [busquedaNota,     setBusquedaNota]     = useState('')
+  const [notaEncontrada,   setNotaEncontrada]   = useState<any>(inicial?.nota_rel ?? null)
+  const [notaId,           setNotaId]           = useState<number | null>(inicial?.nota_id ?? null)
+  const [buscandoNota,     setBuscandoNota]     = useState(false)
+  const [errorNota,        setErrorNota]        = useState('')
 
-  // Enlace opcional a cliente
-  const [busquedaCliente, setBusquedaCliente]     = useState('')
-  const [clienteEncontrado, setClienteEncontrado] = useState<any>(inicial?.cliente ?? null)
-  const [clienteId, setClienteId]                 = useState<number | null>(inicial?.cliente_id ?? null)
-  const [resultadosCliente, setResultadosCliente] = useState<any[]>([])
-  const [buscandoCliente, setBuscandoCliente]     = useState(false)
+  const [busquedaCliente,    setBusquedaCliente]    = useState('')
+  const [clienteEncontrado,  setClienteEncontrado]  = useState<any>(inicial?.cliente ?? null)
+  const [clienteId,          setClienteId]          = useState<number | null>(inicial?.cliente_id ?? null)
+  const [resultadosCliente,  setResultadosCliente]  = useState<any[]>([])
+  const [buscandoCliente,    setBuscandoCliente]    = useState(false)
 
-  // Notas de la orden
-  const [notas, setNotas] = useState(inicial?.notas ?? '')
+  const [observaciones, setObservaciones] = useState(inicial?.observaciones ?? '')
 
-  // Líneas
   const [lineas, setLineas] = useState<Omit<LineaOrden, 'id' | 'tipologia' | 'color_nombre'>[]>(
     inicial?.orden_lineas.map(l => ({
-      tipologia_id:    l.tipologia_id,
-      color_id:        l.color_id,
-      ancho_total:     l.ancho_total,
-      alto_total:      l.alto_total,
-      alto_izquierda:  l.alto_izquierda,
-      alto_derecha:    l.alto_derecha,
-      unidades_totales: l.unidades_totales,
-      referencia:      l.referencia,
-      posicion:        l.posicion,
+      tipologia_id: l.tipologia_id, color_id: l.color_id,
+      ancho_total: l.ancho_total, alto_total: l.alto_total,
+      alto_izquierda: l.alto_izquierda, alto_derecha: l.alto_derecha,
+      unidades_totales: l.unidades_totales, referencia: l.referencia, posicion: l.posicion,
     })) ?? []
   )
 
   const [guardando, setGuardando] = useState(false)
-  const [error, setError]         = useState('')
+  const [error,     setError]     = useState('')
 
   async function buscarNota() {
     const num = parseInt(busquedaNota)
@@ -224,13 +206,8 @@ function FormularioOrden({
     try {
       const n = await buscarNotaParaOrden(num)
       if (!n) { setErrorNota('No se encontró esa nota.'); return }
-      setNotaEncontrada(n)
-      setNotaId(n.id)
-      // Auto-rellenar cliente si no hay uno
-      if (!clienteId && n.clientes) {
-        setClienteEncontrado(n.clientes)
-        setClienteId(n.cliente_id)
-      }
+      setNotaEncontrada(n); setNotaId(n.id)
+      if (!clienteId && n.clientes) { setClienteEncontrado(n.clientes); setClienteId(n.cliente_id) }
     } catch { setErrorNota('Error al buscar la nota.') }
     finally   { setBuscandoNota(false) }
   }
@@ -239,39 +216,35 @@ function FormularioOrden({
     if (!busquedaCliente.trim()) return
     setBuscandoCliente(true)
     const res = await buscarClientesParaOrden(busquedaCliente)
-    setResultadosCliente(res)
-    setBuscandoCliente(false)
+    setResultadosCliente(res); setBuscandoCliente(false)
   }
 
   function añadirLinea() {
+    const primeraActiva = tipologias.find(t => t.activo)
     setLineas(prev => [...prev, {
-      tipologia_id: tipologias.find(t => t.activo)?.id ?? 0,
-      color_id: null, ancho_total: null, alto_total: null,
-      alto_izquierda: null, alto_derecha: null,
+      tipologia_id: primeraActiva?.id ?? 0, color_id: null,
+      ancho_total: null, alto_total: null, alto_izquierda: null, alto_derecha: null,
       unidades_totales: 1, referencia: '', posicion: prev.length,
     }])
   }
 
-  function actualizarLinea(idx: number, l: Omit<LineaOrden, 'id' | 'tipologia' | 'color_nombre'>) {
-    setLineas(prev => prev.map((x, i) => i === idx ? l : x))
-  }
-
-  function eliminarLinea(idx: number) {
-    setLineas(prev => prev.filter((_, i) => i !== idx).map((l, i) => ({ ...l, posicion: i })))
-  }
-
   async function guardar() {
-    if (lineas.length === 0) { setError('Añade al menos una línea a la orden.'); return }
-    if (lineas.some(l => !l.tipologia_id)) { setError('Todas las líneas deben tener tipología.'); return }
+    if (lineas.length === 0) { setError('Añade al menos una línea.'); return }
+    if (lineas.some(l => !l.tipologia_id)) { setError('Todas las líneas necesitan tipología.'); return }
     setGuardando(true); setError('')
     try {
-      const datos = { nota_id: notaId, cliente_id: clienteId, notas, lineas }
+      const datos = { nota_id: notaId, cliente_id: clienteId, observaciones, lineas }
       if (inicial) {
         await actualizarOrden(inicial.id, datos)
         onGuardada({ ...inicial, ...datos, orden_lineas: lineas as any })
       } else {
         const nueva = await crearOrden(datos)
-        onGuardada({ id: nueva.id, numero_orden: null, ...datos, creado_en: new Date().toISOString(), orden_lineas: lineas as any })
+        onGuardada({
+          id: nueva.id, numero_orden: null, nota_id: notaId, cliente_id: clienteId,
+          observaciones, creado_en: new Date().toISOString(),
+          cliente: clienteEncontrado, nota_rel: notaEncontrada,
+          orden_lineas: lineas as any,
+        })
       }
     } catch (e: any) { setError(e.message ?? 'Error al guardar.') }
     finally         { setGuardando(false) }
@@ -280,7 +253,7 @@ function FormularioOrden({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {/* Enlace a nota (opcional) */}
+      {/* Nota relacionada */}
       <div style={{ ...card, padding: 16 }}>
         <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 600, color: '#374151' }}>NOTA RELACIONADA (opcional)</p>
         {notaEncontrada ? (
@@ -289,19 +262,15 @@ function FormularioOrden({
               Nota <strong>#{notaEncontrada.numero_nota}</strong>
               {notaEncontrada.tipo_notas?.nombre ? ` — ${notaEncontrada.tipo_notas.nombre}` : ''}
             </span>
-            <button onClick={() => { setNotaEncontrada(null); setNotaId(null); setBusquedaNota('') }} style={btn('#f3f4f6', '#374151')}>
-              Quitar
-            </button>
+            <button onClick={() => { setNotaEncontrada(null); setNotaId(null); setBusquedaNota('') }} style={btn('#f3f4f6', '#374151')}>Quitar</button>
           </div>
         ) : (
           <div style={{ display: 'flex', gap: 8 }}>
             <input
-              value={busquedaNota}
+              type="number" value={busquedaNota}
               onChange={e => setBusquedaNota(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && buscarNota()}
-              placeholder="Número de nota…"
-              style={{ ...inp, flex: 1 }}
-              type="number"
+              placeholder="Número de nota…" style={{ ...inp, flex: 1 }}
             />
             <button onClick={buscarNota} disabled={buscandoNota} style={btn('#1c2230')}>
               {buscandoNota ? '…' : 'Buscar'}
@@ -311,7 +280,7 @@ function FormularioOrden({
         {errorNota && <p style={{ color: '#dc2626', fontSize: 12, margin: '6px 0 0' }}>{errorNota}</p>}
       </div>
 
-      {/* Enlace a cliente (opcional) */}
+      {/* Cliente */}
       <div style={{ ...card, padding: 16 }}>
         <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 600, color: '#374151' }}>CLIENTE (opcional)</p>
         {clienteEncontrado ? (
@@ -320,9 +289,7 @@ function FormularioOrden({
               <strong>{clienteEncontrado.nombre}</strong>
               {clienteEncontrado.telefono ? ` — ${clienteEncontrado.telefono}` : ''}
             </span>
-            <button onClick={() => { setClienteEncontrado(null); setClienteId(null); setBusquedaCliente('') }} style={btn('#f3f4f6', '#374151')}>
-              Quitar
-            </button>
+            <button onClick={() => { setClienteEncontrado(null); setClienteId(null); setBusquedaCliente('') }} style={btn('#f3f4f6', '#374151')}>Quitar</button>
           </div>
         ) : (
           <>
@@ -331,8 +298,7 @@ function FormularioOrden({
                 value={busquedaCliente}
                 onChange={e => setBusquedaCliente(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && buscarClientes()}
-                placeholder="Nombre o teléfono…"
-                style={{ ...inp, flex: 1 }}
+                placeholder="Nombre o teléfono…" style={{ ...inp, flex: 1 }}
               />
               <button onClick={buscarClientes} disabled={buscandoCliente} style={btn('#1c2230')}>
                 {buscandoCliente ? '…' : 'Buscar'}
@@ -348,7 +314,7 @@ function FormularioOrden({
                     onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
                     onMouseLeave={e => (e.currentTarget.style.background = '')}
                   >
-                    <strong>{c.nombre}</strong> {c.telefono ? `— ${c.telefono}` : ''}
+                    <strong>{c.nombre}</strong>{c.telefono ? ` — ${c.telefono}` : ''}
                   </div>
                 ))}
               </div>
@@ -357,12 +323,12 @@ function FormularioOrden({
         )}
       </div>
 
-      {/* Notas */}
+      {/* Observaciones */}
       <div>
-        <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>NOTAS DE LA ORDEN</label>
+        <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>OBSERVACIONES</label>
         <textarea
-          value={notas} onChange={e => setNotas(e.target.value)} rows={2}
-          placeholder="Observaciones generales de esta orden…"
+          value={observaciones} onChange={e => setObservaciones(e.target.value)} rows={2}
+          placeholder="Observaciones de esta orden…"
           style={{ ...inp, height: 'auto', resize: 'vertical' }}
         />
       </div>
@@ -375,15 +341,15 @@ function FormularioOrden({
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {lineas.length === 0 && (
-            <p style={{ color: '#9ca3af', fontSize: 13, textAlign: 'center', padding: 20 }}>
+            <p style={{ color: '#9ca3af', fontSize: 13, textAlign: 'center', padding: 20, margin: 0 }}>
               Añade la primera línea con el botón de arriba.
             </p>
           )}
           {lineas.map((l, i) => (
             <EditorLinea
               key={i} linea={l} tipologias={tipologias} colores={colores}
-              onChange={nl => actualizarLinea(i, nl)}
-              onEliminar={() => eliminarLinea(i)}
+              onChange={nl => setLineas(prev => prev.map((x, j) => j === i ? nl : x))}
+              onEliminar={() => setLineas(prev => prev.filter((_, j) => j !== i).map((x, j) => ({ ...x, posicion: j })))}
             />
           ))}
         </div>
@@ -406,20 +372,18 @@ function FormularioOrden({
 function VistaOrden({ orden }: { orden: OrdenTrabajo }) {
   return (
     <div>
-      {/* Cabecera */}
       <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', marginBottom: 16, fontSize: 13 }}>
         {orden.cliente && (
           <span><strong>Cliente:</strong> {orden.cliente.nombre}{orden.cliente.telefono ? ` — ${orden.cliente.telefono}` : ''}</span>
         )}
-        {orden.nota && (
-          <span><strong>Nota:</strong> #{orden.nota.numero_nota}{(orden.nota as any).tipo_notas?.nombre ? ` — ${(orden.nota as any).tipo_notas.nombre}` : ''}</span>
+        {orden.nota_rel && (
+          <span><strong>Nota:</strong> #{orden.nota_rel.numero_nota}{orden.nota_rel.tipo_notas?.nombre ? ` — ${orden.nota_rel.tipo_notas.nombre}` : ''}</span>
         )}
-        {orden.notas && (
-          <span style={{ color: '#6b7280', fontStyle: 'italic' }}>{orden.notas}</span>
+        {orden.observaciones && (
+          <span style={{ color: '#6b7280', fontStyle: 'italic' }}>{orden.observaciones}</span>
         )}
       </div>
 
-      {/* Líneas */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {orden.orden_lineas.map((linea, i) => {
           const tip = linea.tipologia
@@ -432,25 +396,22 @@ function VistaOrden({ orden }: { orden: OrdenTrabajo }) {
           }
           return (
             <div key={i} style={{ border: '1px solid #e2e8f0', borderRadius: 10, overflow: 'hidden' }}>
-              {/* Cabecera de línea */}
               <div style={{ background: '#1c2230', color: '#fff', padding: '8px 14px', display: 'flex', gap: 16, fontSize: 13, flexWrap: 'wrap' }}>
                 <strong>{tip?.nombre ?? '—'}</strong>
                 {linea.color_nombre && <span>Color: <strong>{linea.color_nombre}</strong></span>}
                 <span>Unidades: <strong>{linea.unidades_totales}</strong></span>
                 {linea.referencia && <span style={{ color: '#aab1c0' }}>{linea.referencia}</span>}
-                {/* Medidas */}
                 {linea.ancho_total    != null && <span>A: <strong>{linea.ancho_total}</strong></span>}
                 {linea.alto_total     != null && <span>H: <strong>{linea.alto_total}</strong></span>}
                 {linea.alto_izquierda != null && <span>H.Izq: <strong>{linea.alto_izquierda}</strong></span>}
                 {linea.alto_derecha   != null && <span>H.Der: <strong>{linea.alto_derecha}</strong></span>}
               </div>
-              {/* Tabla de cortes */}
               {perfiles.length > 0 && (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: '#f8fafc' }}>
                       <th style={{ padding: '6px 12px', textAlign: 'left', color: '#374151' }}>Perfil</th>
-                      <th style={{ padding: '6px 12px', textAlign: 'left', color: '#6b7280', fontFamily: 'monospace', fontWeight: 400 }}>Fórmula</th>
+                      <th style={{ padding: '6px 12px', textAlign: 'left', color: '#9ca3af', fontFamily: 'monospace', fontWeight: 400, fontSize: 12 }}>Fórmula</th>
                       <th style={{ padding: '6px 12px', textAlign: 'center', color: '#374151' }}>Ud.</th>
                       <th style={{ padding: '6px 12px', textAlign: 'right', color: '#374151' }}>Corte (mm)</th>
                     </tr>
@@ -483,18 +444,16 @@ function VistaOrden({ orden }: { orden: OrdenTrabajo }) {
 // ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
 
 export default function OrdenesExplorer({
-  ordenesIniciales,
-  tipologias,
-  colores,
+  ordenesIniciales, tipologias, colores,
 }: {
   ordenesIniciales: OrdenTrabajo[]
   tipologias: Tipologia[]
   colores: { id: number; nombre: string; activo: boolean }[]
 }) {
-  const [ordenes,  setOrdenes]  = useState<OrdenTrabajo[]>(ordenesIniciales)
-  const [modo,     setModo]     = useState<'lista' | 'nueva' | 'editar'>('lista')
-  const [editando, setEditando] = useState<OrdenTrabajo | null>(null)
-  const [expandida, setExpandida] = useState<number | null>(null)
+  const [ordenes,    setOrdenes]    = useState<OrdenTrabajo[]>(ordenesIniciales)
+  const [modo,       setModo]       = useState<'lista' | 'nueva' | 'editar'>('lista')
+  const [editando,   setEditando]   = useState<OrdenTrabajo | null>(null)
+  const [expandida,  setExpandida]  = useState<number | null>(null)
   const [eliminando, setEliminando] = useState<number | null>(null)
 
   function onGuardada(o: OrdenTrabajo) {
@@ -506,7 +465,7 @@ export default function OrdenesExplorer({
   }
 
   async function onEliminar(id: number) {
-    if (!confirm('¿Eliminar esta orden?')) return
+    if (!confirm('¿Eliminar esta orden de trabajo?')) return
     setEliminando(id)
     await eliminarOrden(id)
     setOrdenes(prev => prev.filter(o => o.id !== id))
@@ -549,7 +508,6 @@ export default function OrdenesExplorer({
 
       {ordenes.map(o => (
         <div key={o.id} style={card}>
-          {/* Cabecera */}
           <div
             style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', cursor: 'pointer' }}
             onClick={() => setExpandida(expandida === o.id ? null : o.id)}
@@ -559,28 +517,25 @@ export default function OrdenesExplorer({
               <span style={{ fontWeight: 600, fontSize: 15, color: '#1c2230' }}>
                 Orden #{o.numero_orden ?? o.id}
               </span>
-              {o.cliente && (
-                <span style={{ marginLeft: 10, fontSize: 13, color: '#6b7280' }}>{o.cliente.nombre}</span>
-              )}
+              {o.cliente && <span style={{ marginLeft: 10, fontSize: 13, color: '#6b7280' }}>{o.cliente.nombre}</span>}
               <span style={{ marginLeft: 10, fontSize: 12, color: '#9ca3af' }}>
                 {o.orden_lineas.length} {o.orden_lineas.length === 1 ? 'línea' : 'líneas'}
               </span>
-              {o.notas && (
-                <span style={{ marginLeft: 10, fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>· {o.notas}</span>
-              )}
+              {o.observaciones && <span style={{ marginLeft: 10, fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>· {o.observaciones}</span>}
             </div>
             <span style={{ fontSize: 12, color: '#9ca3af' }}>
               {new Date(o.creado_en).toLocaleDateString('es-ES')}
             </span>
-            <button
-              onClick={e => { e.stopPropagation(); setEditando(o); setModo('editar') }}
-              style={btn('#f3f4f6', '#374151')}
-            >Editar</button>
+            <button onClick={e => { e.stopPropagation(); setEditando(o); setModo('editar') }} style={btn('#f3f4f6', '#374151')}>
+              Editar
+            </button>
             <button
               onClick={e => { e.stopPropagation(); onEliminar(o.id) }}
               disabled={eliminando === o.id}
               style={btn('#fee2e2', '#dc2626')}
-            >{eliminando === o.id ? '…' : 'Eliminar'}</button>
+            >
+              {eliminando === o.id ? '…' : 'Eliminar'}
+            </button>
           </div>
 
           {expandida === o.id && (
