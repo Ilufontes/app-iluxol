@@ -59,15 +59,18 @@ const card: React.CSSProperties = {
 
 // ─── EDITOR DE LÍNEA ─────────────────────────────────────────────────────────
 
-function EditorLinea({ linea, tipologias, colores, onChange, onEliminar }: {
+function EditorLinea({ linea, tipologias, colores, tiposTubo, onChange, onEliminar }: {
   linea: Omit<LineaOrden, 'id' | 'tipologia' | 'color_nombre'>
   tipologias: Tipologia[]
   colores: Color[]
+  tiposTubo: TipoTubo[]
   onChange: (l: Omit<LineaOrden, 'id' | 'tipologia' | 'color_nombre'>) => void
   onEliminar: () => void
 }) {
   const tip = tipologias.find(t => t.id === linea.tipologia_id) ?? null
-  const tipoTubo = tip?.tipo_tubo ?? null
+  // Tipo de tubo: primero el de la línea (elegido por el usuario), sino el de la tipología
+  const tipoTuboLinea = tiposTubo.find(t => t.id === linea.tipo_tubo_id) ?? null
+  const tipoTubo = tipoTuboLinea ?? tip?.tipo_tubo ?? null
   const variables = tip?.tipologia_filas.filter(f => f.tipo === 'variable') ?? []
   const perfiles  = tip?.tipologia_filas.filter(f => f.tipo === 'perfil')  ?? []
   const medidas: Record<string, number> = {
@@ -144,9 +147,25 @@ function EditorLinea({ linea, tipologias, colores, onChange, onEliminar }: {
       {(tipoTubo || (tip?.tipologia_filas ?? []).some(f => f.tipo === 'tubo')) && (
         <div style={{ background: '#fff8ed', border: '1px solid #fed7aa', borderRadius: 8, padding: 10, marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#92400e' }}>
-              TUBOS {tipoTubo ? `${tipoTubo?.nombre ?? ""} · ${tipoTubo?.descuento ?? 0}mm descuento` : '(asigna un tipo de tubo en la tipología para calcular medidas)'}
-            </span>
+            {tipoTubo ? (
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#92400e' }}>
+                TUBOS {tipoTubo.nombre} · {tipoTubo.descuento}mm descuento
+              </span>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: '#92400e' }}>TUBOS — tipo:</span>
+                <select
+                  value={linea.tipo_tubo_id ?? ''}
+                  onChange={e => onChange({ ...linea, tipo_tubo_id: e.target.value ? Number(e.target.value) : null })}
+                  style={{ fontSize: 12, padding: '3px 6px', borderRadius: 6, border: '1px solid #fed7aa', background: '#fff', color: '#92400e' }}
+                >
+                  <option value="">— Selecciona tipo de tubo —</option>
+                  {(tiposTubo ?? []).filter(t => t.activo).map(t => (
+                    <option key={t.id} value={t.id}>{t.nombre} ({t.descuento}mm)</option>
+                  ))}
+                </select>
+              </div>
+            )}
             {/* Marco completo */}
             <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, cursor: 'pointer', fontWeight: 600, color: '#1c2230' }}>
               <input type="checkbox" checked={marcoCompleto} onChange={toggleMarcoCompleto} style={{ width: 14, height: 14 }} />
@@ -190,41 +209,31 @@ function EditorLinea({ linea, tipologias, colores, onChange, onEliminar }: {
       )}
 
       {/* Cortes de perfiles en tiempo real */}
-      {/* Filas de tubo de la tipología */}
-      {(() => {
-        const filasTubo = tip?.tipologia_filas.filter((f): f is FilaTubo => f.tipo === 'tubo') ?? []
-        const tubosActivos = filasTubo.filter(f => {
-          if (f.tubo_lado === 'superior') return linea.tubo_superior
-          if (f.tubo_lado === 'inferior') return linea.tubo_inferior
-          if (f.tubo_lado === 'izquierda') return linea.tubo_izquierda
-          if (f.tubo_lado === 'derecha') return linea.tubo_derecha
-          return false
-        })
-        if (!tubosActivos.length) return null
-        const d = tipoTubo?.descuento ?? 0
-        const laterales  = (linea.tubo_izquierda ? 1 : 0) + (linea.tubo_derecha  ? 1 : 0)
-        const horizontales = (linea.tubo_superior ? 1 : 0) + (linea.tubo_inferior ? 1 : 0)
+      {/* Despiece de tubos: todos los lados marcados */}
+      {hayTubos && tipoTubo && (() => {
+        const d = tipoTubo.descuento
+        const laterales    = (linea.tubo_izquierda ? 1 : 0) + (linea.tubo_derecha  ? 1 : 0)
+        const horizontales = (linea.tubo_superior  ? 1 : 0) + (linea.tubo_inferior ? 1 : 0)
+        const lados: { lado: string; medida: number }[] = []
+        if (linea.tubo_superior)  lados.push({ lado: 'Superior',  medida: medidas.ancho_total    + laterales    * d })
+        if (linea.tubo_inferior)  lados.push({ lado: 'Inferior',  medida: medidas.ancho_total    + laterales    * d })
+        if (linea.tubo_izquierda) lados.push({ lado: 'Izquierda', medida: medidas.alto_izquierda + horizontales * d })
+        if (linea.tubo_derecha)   lados.push({ lado: 'Derecha',   medida: medidas.alto_derecha   + horizontales * d })
         return (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 6 }}>
             <thead><tr style={{ background: '#f59e0b' }}>
-              <th style={{ padding: '4px 8px', textAlign: 'left', color: '#1c2230' }}>Tubo {tipoTubo?.nombre ?? ''}</th>
+              <th style={{ padding: '4px 8px', textAlign: 'left', color: '#1c2230' }}>Tubo {tipoTubo.nombre}</th>
               <th style={{ padding: '4px 8px', textAlign: 'center', color: '#1c2230' }}>Ud.</th>
               <th style={{ padding: '4px 8px', textAlign: 'right', color: '#1c2230' }}>Corte mm</th>
             </tr></thead>
             <tbody>
-              {tubosActivos.map((t, i) => {
-                const lado = t.tubo_lado
-                const medida = (lado === 'superior' || lado === 'inferior')
-                  ? (medidas.ancho_total + laterales * d)
-                  : (lado === 'izquierda' ? medidas.alto_izquierda + horizontales * d : medidas.alto_derecha + horizontales * d)
-                return (
-                  <tr key={i} style={{ borderBottom: '1px solid #fde68a', background: '#fffbf4' }}>
-                    <td style={{ padding: '4px 8px', textTransform: 'capitalize' }}>{lado}</td>
-                    <td style={{ padding: '4px 8px', textAlign: 'center' }}>{t.unidades}</td>
-                    <td style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 700, color: '#92400e' }}>{medida}</td>
-                  </tr>
-                )
-              })}
+              {lados.map((t, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid #fde68a', background: '#fffbf4' }}>
+                  <td style={{ padding: '4px 8px' }}>{t.lado}</td>
+                  <td style={{ padding: '4px 8px', textAlign: 'center' }}>1</td>
+                  <td style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 700, color: '#92400e' }}>{t.medida}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         )
@@ -263,10 +272,11 @@ function EditorLinea({ linea, tipologias, colores, onChange, onEliminar }: {
 
 // ─── FORMULARIO ───────────────────────────────────────────────────────────────
 
-function FormularioOrden({ inicial, tipologias, colores, onGuardada, onCancelar }: {
+function FormularioOrden({ inicial, tipologias, colores, tiposTubo, onGuardada, onCancelar }: {
   inicial?: OrdenTrabajo
   tipologias: Tipologia[]
   colores: Color[]
+  tiposTubo: TipoTubo[]
   onGuardada: (o: OrdenTrabajo) => void
   onCancelar: () => void
 }) {
@@ -291,6 +301,7 @@ function FormularioOrden({ inicial, tipologias, colores, onGuardada, onCancelar 
       unidades_totales: l.unidades_totales, referencia: l.referencia, posicion: l.posicion,
       tubo_superior: l.tubo_superior, tubo_inferior: l.tubo_inferior,
       tubo_izquierda: l.tubo_izquierda, tubo_derecha: l.tubo_derecha,
+      tipo_tubo_id: l.tipo_tubo_id ?? null,
     })) ?? []
   )
   const [guardando, setGuardando] = useState(false)
@@ -333,6 +344,7 @@ function FormularioOrden({ inicial, tipologias, colores, onGuardada, onCancelar 
       ancho_total: null, alto_total: null, alto_izquierda: null, alto_derecha: null,
       unidades_totales: 1, referencia: '', posicion: prev.length,
       tubo_superior: false, tubo_inferior: false, tubo_izquierda: false, tubo_derecha: false,
+      tipo_tubo_id: tip?.tipo_tubo?.id ?? null,
     }])
   }
 
@@ -421,7 +433,7 @@ function FormularioOrden({ inicial, tipologias, colores, onGuardada, onCancelar 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {lineas.length === 0 && <p style={{ color: '#9ca3af', fontSize: 13, textAlign: 'center', padding: 20, margin: 0 }}>Añade la primera línea.</p>}
           {lineas.map((l, i) => (
-            <EditorLinea key={i} linea={l} tipologias={tipologias} colores={colores}
+            <EditorLinea key={i} linea={l} tipologias={tipologias} colores={colores} tiposTubo={tiposTubo}
               onChange={nl => setLineas(prev => prev.map((x, j) => j === i ? nl : x))}
               onEliminar={() => setLineas(prev => prev.filter((_, j) => j !== i).map((x, j) => ({ ...x, posicion: j })))} />
           ))}
@@ -514,10 +526,11 @@ function VistaOrden({ orden }: { orden: OrdenTrabajo }) {
 
 // ─── PRINCIPAL ────────────────────────────────────────────────────────────────
 
-export default function OrdenesExplorer({ ordenesIniciales, tipologias, colores }: {
+export default function OrdenesExplorer({ ordenesIniciales, tipologias, colores, tiposTubo }: {
   ordenesIniciales: OrdenTrabajo[]
   tipologias: Tipologia[]
   colores: Color[]
+  tiposTubo: TipoTubo[]
 }) {
   const [ordenes,    setOrdenes]    = useState<OrdenTrabajo[]>(ordenesIniciales)
   const [modo,       setModo]       = useState<'lista' | 'nueva' | 'editar'>('lista')
@@ -544,7 +557,7 @@ export default function OrdenesExplorer({ ordenesIniciales, tipologias, colores 
         </h2>
         <div style={{ ...card, padding: 22 }}>
           <FormularioOrden inicial={modo === 'editar' ? editando! : undefined}
-            tipologias={tipologias} colores={colores}
+            tipologias={tipologias} colores={colores} tiposTubo={tiposTubo}
             onGuardada={onGuardada} onCancelar={() => { setModo('lista'); setEditando(null) }} />
         </div>
       </div>
