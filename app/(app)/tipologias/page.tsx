@@ -1,12 +1,9 @@
-import { cargarTipologias, cargarColores } from './actions'
+import { cargarTipologias } from './actions'
 import TipologiasExplorer from './TipologiasExplorer'
 import CabeceraSeccion from '@/components/CabeceraSeccion'
 
 export default async function TipologiasPage() {
-  const [tipologias, colores] = await Promise.all([
-    cargarTipologias(),
-    cargarColores(),
-  ])
+  const tipologias = await cargarTipologias()
 
   return (
     <div>
@@ -15,10 +12,7 @@ export default async function TipologiasPage() {
         titulo="Tipologías"
         subtitulo="Plantillas de productos con perfiles y fórmulas de corte"
       />
-      <TipologiasExplorer
-        tipologiasIniciales={tipologias}
-        coloresIniciales={colores}
-      />
+      <TipologiasExplorer tipologiasIniciales={tipologias} />
     </div>
   )
 }
