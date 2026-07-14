@@ -17,6 +17,7 @@ export type FilaPerfilNueva   = Omit<FilaPerfil, 'id'>
 export type FilaTubaNueva     = Omit<FilaTubo, 'id'>
 export type FilaNueva         = FilaVariableNueva | FilaPerfilNueva | FilaTubaNueva
 
+export type TuboLado = 'superior' | 'inferior' | 'izquierda' | 'derecha'
 export type TipoTubo = { id: number; nombre: string; descuento: number; activo: boolean }
 
 export type Tipologia = {
