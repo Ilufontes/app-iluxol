@@ -16,12 +16,16 @@ export type FilaVariableNueva = Omit<FilaVariable, 'id'>
 export type FilaPerfilNueva   = Omit<FilaPerfil, 'id'>
 export type FilaNueva         = FilaVariableNueva | FilaPerfilNueva
 
+export type TipoTubo = { id: number; nombre: string; descuento: number; activo: boolean }
+
 export type Tipologia = {
   id: number
   nombre: string
   notas: string | null
   activo: boolean
   imagen_url: string | null
+  tipo_tubo_id: number | null
+  tipo_tubo: TipoTubo | null
   tipologia_filas: FilaTipologia[]
 }
 
@@ -29,12 +33,15 @@ export async function cargarTipologias(): Promise<Tipologia[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('tipologias')
-    .select('id, nombre, notas, activo, imagen_url, tipologia_filas ( id, tipo, variable_clave, nombre_perfil, formula, unidades, posicion )')
+    .select('id, nombre, notas, activo, imagen_url, tipo_tubo_id, tipos_tubo ( id, nombre, descuento, activo ), tipologia_filas ( id, tipo, variable_clave, nombre_perfil, formula, unidades, posicion )')
     .order('nombre')
   if (error) throw new Error('No se pudieron cargar las tipologías.')
+  function unoT(v: any) { return Array.isArray(v) ? (v[0] ?? null) : v }
   return (data ?? []).map(t => ({
     ...t,
-    imagen_url: (t as any).imagen_url ?? null,
+    imagen_url:   (t as any).imagen_url   ?? null,
+    tipo_tubo_id: (t as any).tipo_tubo_id ?? null,
+    tipo_tubo:    unoT((t as any).tipos_tubo),
     tipologia_filas: [...((t as any).tipologia_filas as FilaTipologia[])].sort((a, b) => a.posicion - b.posicion),
   }))
 }
@@ -137,5 +144,17 @@ export async function crearColor(nombre: string) {
 export async function toggleActivoColor(id: number, activo: boolean) {
   const supabase = await createClient()
   await supabase.from('colores').update({ activo }).eq('id', id)
+  revalidatePath('/tipologias')
+}
+
+export async function cargarTiposTubo(): Promise<TipoTubo[]> {
+  const supabase = await createClient()
+  const { data } = await supabase.from('tipos_tubo').select('id, nombre, descuento, activo').order('nombre')
+  return (data ?? []) as TipoTubo[]
+}
+
+export async function actualizarTipoTuboTipologia(tipologiaId: number, tipoTuboId: number | null): Promise<void> {
+  const supabase = await createClient()
+  await supabase.from('tipologias').update({ tipo_tubo_id: tipoTuboId }).eq('id', tipologiaId)
   revalidatePath('/tipologias')
 }
