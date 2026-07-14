@@ -14,7 +14,8 @@ export type FilaPerfil = {
 export type FilaTipologia = FilaVariable | FilaPerfil
 export type FilaVariableNueva = Omit<FilaVariable, 'id'>
 export type FilaPerfilNueva   = Omit<FilaPerfil, 'id'>
-export type FilaNueva         = FilaVariableNueva | FilaPerfilNueva
+export type FilaTubaNueva     = Omit<FilaTubo, 'id'>
+export type FilaNueva         = FilaVariableNueva | FilaPerfilNueva | FilaTubaNueva
 
 export type TipoTubo = { id: number; nombre: string; descuento: number; activo: boolean }
 
@@ -33,7 +34,7 @@ export async function cargarTipologias(): Promise<Tipologia[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('tipologias')
-    .select('id, nombre, notas, activo, imagen_url, tipo_tubo_id, tipos_tubo ( id, nombre, descuento, activo ), tipologia_filas ( id, tipo, variable_clave, nombre_perfil, formula, unidades, posicion )')
+    .select('id, nombre, notas, activo, imagen_url, tipo_tubo_id, tipos_tubo ( id, nombre, descuento, activo ), tipologia_filas ( id, tipo, variable_clave, nombre_perfil, formula, unidades, posicion, tubo_lado, tubo_unidades )')
     .order('nombre')
   if (error) throw new Error('No se pudieron cargar las tipologías.')
   function unoT(v: any) { return Array.isArray(v) ? (v[0] ?? null) : v }
@@ -63,6 +64,8 @@ export async function crearTipologia(datos: {
       nombre_perfil:  f.tipo === 'perfil' ? f.nombre_perfil : null,
       formula:        f.tipo === 'perfil' ? f.formula : null,
       unidades:       f.tipo === 'perfil' ? f.unidades : null,
+      tubo_lado:      f.tipo === 'tubo' ? f.tubo_lado : null,
+      tubo_unidades:  f.tipo === 'tubo' ? f.unidades : null,
     })))
   }
   revalidatePath('/tipologias')
@@ -85,6 +88,8 @@ export async function actualizarTipologia(
       nombre_perfil:  f.tipo === 'perfil' ? f.nombre_perfil : null,
       formula:        f.tipo === 'perfil' ? f.formula : null,
       unidades:       f.tipo === 'perfil' ? f.unidades : null,
+      tubo_lado:      f.tipo === 'tubo' ? f.tubo_lado : null,
+      tubo_unidades:  f.tipo === 'tubo' ? f.unidades : null,
     })))
   }
   revalidatePath('/tipologias')
