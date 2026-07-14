@@ -162,7 +162,12 @@ export default async function OrdenesImprimirPage({ params }: { params: Promise<
           <div className="info-bar">
             {orden.cliente_nombre && <span><strong>Cliente:</strong> {orden.cliente_nombre}{orden.cliente_telefono ? ` · ${orden.cliente_telefono}` : ''}</span>}
             {orden.nota_id && <span><strong>Nota:</strong> #{orden.numero_nota ?? orden.nota_id}</span>}
-            {orden.observaciones && <span style={{ fontStyle: 'italic', color: '#6b7280' }}>{orden.observaciones}</span>}
+          </div>
+        )}
+
+        {orden.observaciones && (
+          <div style={{ margin: '-8px 0 14px', padding: '8px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, fontSize: 13, color: '#92400e', fontStyle: 'italic' }}>
+            📝 {orden.observaciones}
           </div>
         )}
 
