@@ -116,39 +116,41 @@ function EditorFilas({ filas, onChange }: {
               {fila.tipo === 'variable' ? 'MEDIDA' : fila.tipo === 'tubo' ? 'TUBO' : 'PERFIL'}
             </span>
 
-            {fila.tipo === 'variable' ? (
-              <select
-                value={fila.variable_clave}
-                onChange={e => actualizar(idx, { variable_clave: e.target.value as VariableClave })}
-                style={{ ...inp, flex: 1 }}
-              >
-                {VARIABLES_DISPONIBLES.map(v => (
-                  <option key={v.clave} value={v.clave}>{v.etiqueta}</option>
-                ))}
-              </select>
-            ) : fila.tipo === 'tubo' ? (
-              <>
-                <select
-                  value={fila.tubo_lado}
-                  onChange={e => actualizar(idx, { tubo_lado: e.target.value as TuboLado })}
-                  style={{ ...inp, flex: 2 }}
-                >
-                  <option value="superior">Superior</option>
-                  <option value="inferior">Inferior</option>
-                  <option value="izquierda">Izquierda</option>
-                  <option value="derecha">Derecha</option>
+            {fila.tipo === 'variable' ? (() => {
+              const f = fila as FilaVariableNueva
+              return (
+                <select value={f.variable_clave}
+                  onChange={e => actualizar(idx, { variable_clave: e.target.value as VariableClave })}
+                  style={{ ...inp, flex: 1 }}>
+                  {VARIABLES_DISPONIBLES.map(v => (
+                    <option key={v.clave} value={v.clave}>{v.etiqueta}</option>
+                  ))}
                 </select>
-                <span style={{ fontSize: 11, color: '#6b7280', flex: 2, alignSelf: 'center', paddingLeft: 4 }}>
-                  {fila.tubo_lado === 'superior' || fila.tubo_lado === 'inferior'
-                    ? 'ancho_total + (laterales × desc)'
-                    : fila.tubo_lado === 'izquierda' ? 'alto_izquierda + (horiz × desc)' : 'alto_derecha + (horiz × desc)'}
-                </span>
-                <input type="number" min={1} value={fila.unidades}
-                  onChange={e => actualizar(idx, { unidades: Number(e.target.value) })}
-                  style={{ ...inp, width: 60, flexShrink: 0 }} title="Unidades" />
-                <span style={{ fontSize: 11, color: '#6b7280', flexShrink: 0 }}>ud</span>
-              </>
-            ) : (
+              )
+            })() : fila.tipo === 'tubo' ? (() => {
+              const f = fila as FilaTubaNueva
+              return (
+                <>
+                  <select value={f.tubo_lado}
+                    onChange={e => actualizar(idx, { tubo_lado: e.target.value as TuboLado })}
+                    style={{ ...inp, flex: 2 }}>
+                    <option value="superior">Superior</option>
+                    <option value="inferior">Inferior</option>
+                    <option value="izquierda">Izquierda</option>
+                    <option value="derecha">Derecha</option>
+                  </select>
+                  <span style={{ fontSize: 11, color: '#6b7280', flex: 2, alignSelf: 'center', paddingLeft: 4 }}>
+                    {f.tubo_lado === 'superior' || f.tubo_lado === 'inferior'
+                      ? 'ancho_total + (laterales × desc)'
+                      : f.tubo_lado === 'izquierda' ? 'alto_izquierda + (horiz × desc)' : 'alto_derecha + (horiz × desc)'}
+                  </span>
+                  <input type="number" min={1} value={f.unidades}
+                    onChange={e => actualizar(idx, { unidades: Number(e.target.value) })}
+                    style={{ ...inp, width: 60, flexShrink: 0 }} title="Unidades" />
+                  <span style={{ fontSize: 11, color: '#6b7280', flexShrink: 0 }}>ud</span>
+                </>
+              )
+            })() : (
               <>
                 <input
                   value={fila.nombre_perfil}
