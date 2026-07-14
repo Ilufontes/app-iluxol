@@ -127,30 +127,11 @@ function EditorFilas({ filas, onChange }: {
                   ))}
                 </select>
               )
-            })() : fila.tipo === 'tubo' ? (() => {
-              const f = fila as FilaTubaNueva
-              return (
-                <>
-                  <select value={f.tubo_lado}
-                    onChange={e => actualizar(idx, { tubo_lado: e.target.value as TuboLado })}
-                    style={{ ...inp, flex: 2 }}>
-                    <option value="superior">Superior</option>
-                    <option value="inferior">Inferior</option>
-                    <option value="izquierda">Izquierda</option>
-                    <option value="derecha">Derecha</option>
-                  </select>
-                  <span style={{ fontSize: 11, color: '#6b7280', flex: 2, alignSelf: 'center', paddingLeft: 4 }}>
-                    {f.tubo_lado === 'superior' || f.tubo_lado === 'inferior'
-                      ? 'ancho_total + (laterales × desc)'
-                      : f.tubo_lado === 'izquierda' ? 'alto_izquierda + (horiz × desc)' : 'alto_derecha + (horiz × desc)'}
-                  </span>
-                  <input type="number" min={1} value={f.unidades}
-                    onChange={e => actualizar(idx, { unidades: Number(e.target.value) })}
-                    style={{ ...inp, width: 60, flexShrink: 0 }} title="Unidades" />
-                  <span style={{ fontSize: 11, color: '#6b7280', flexShrink: 0 }}>ud</span>
-                </>
-              )
-            })() : (() => {
+            })() : fila.tipo === 'tubo' ? (
+              <span style={{ fontSize: 12, color: '#92400e', flex: 1, alignSelf: 'center' }}>
+                Tubos opcionales — lados y cálculo se configuran en la orden de trabajo
+              </span>
+            ) : (() => {
               const f = fila as FilaPerfilNueva
               return (
                 <>
@@ -206,7 +187,6 @@ function FormularioTipologia({ inicial, onGuardada, onCancelar }: {
   const [subiendoImg, setSubiendoImg] = useState(false)
   const [tiposTubo,   setTiposTubo]   = useState<TipoTubo[]>([])
   const [tipoTuboId,  setTipoTuboId]  = useState<number | null>(inicial?.tipo_tubo_id ?? null)
-  // Cargar tipos de tubo al montar
   useEffect(() => {
     cargarTiposTubo().then(setTiposTubo).catch(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
