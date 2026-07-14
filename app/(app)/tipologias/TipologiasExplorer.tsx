@@ -8,6 +8,8 @@ import {
   toggleActivoTipologia,
   crearColor,
   toggleActivoColor,
+  subirImagenTipologia,
+  borrarImagenTipologia,
 } from './actions'
 
 // ─── EVALUADOR DE FÓRMULAS ────────────────────────────────────────────────────
@@ -173,8 +175,22 @@ function FormularioTipologia({ inicial, onGuardada, onCancelar }: {
   const [nombre, setNombre]   = useState(inicial?.nombre ?? '')
   const [notas,  setNotas]    = useState(inicial?.notas ?? '')
   const [filas,  setFilas]    = useState<FilaNueva[]>(inicial?.tipologia_filas ?? [])
-  const [guardando, setGuardando] = useState(false)
-  const [error,     setError]     = useState('')
+  const [guardando,   setGuardando]   = useState(false)
+  const [error,       setError]       = useState('')
+  const [imagenUrl,   setImagenUrl]   = useState<string | null>(inicial?.imagen_url ?? null)
+  const [subiendoImg, setSubiendoImg] = useState(false)
+
+  async function handleImagen(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !inicial?.id) return
+    setSubiendoImg(true)
+    try {
+      const fd = new FormData(); fd.append('imagen', file)
+      const url = await subirImagenTipologia(inicial.id, fd)
+      setImagenUrl(url)
+    } catch { setError('Error al subir imagen.') }
+    finally  { setSubiendoImg(false) }
+  }
 
   const [prevAncho,  setPrevAncho]  = useState(600)
   const [prevAlto,   setPrevAlto]   = useState(1000)
@@ -269,6 +285,32 @@ function FormularioTipologia({ inicial, onGuardada, onCancelar }: {
           </table>
         </div>
       )}
+
+      {/* IMAGEN */}
+      <div>
+        <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>IMAGEN DE LA TIPOLOGÍA</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {imagenUrl ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={imagenUrl} alt="Imagen tipología" style={{ height: 80, width: 120, objectFit: 'contain', border: '1px solid #e5e7eb', borderRadius: 6, background: '#f9fafb' }} />
+              <button onClick={async () => { if (inicial?.id) { await borrarImagenTipologia(inicial.id); setImagenUrl(null) } }} style={{ ...btn('#fee2e2', '#dc2626'), padding: '4px 10px', fontSize: 12 }}>Borrar</button>
+            </>
+          ) : (
+            <div style={{ width: 120, height: 80, border: '1px dashed #d1d5db', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 11 }}>
+              Sin imagen
+            </div>
+          )}
+          {inicial?.id ? (
+            <label style={{ cursor: 'pointer', ...btn('#f3f4f6', '#374151'), padding: '6px 12px', fontSize: 12 }}>
+              {subiendoImg ? 'Subiendo…' : '📷 Subir imagen'}
+              <input type="file" accept="image/*" onChange={handleImagen} style={{ display: 'none' }} disabled={subiendoImg} />
+            </label>
+          ) : (
+            <p style={{ fontSize: 11, color: '#9ca3af', margin: 0 }}>Guarda primero la tipología para poder añadir imagen.</p>
+          )}
+        </div>
+      </div>
 
       <div>
         <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>NOTAS</label>
