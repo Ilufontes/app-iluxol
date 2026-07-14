@@ -26,10 +26,10 @@ export type OrdenTrabajo = {
   numero_orden: number | null
   nota_id: number | null
   cliente_id: number | null
-  notas: string | null
+  observaciones: string | null   // campo de texto de la orden (antes "notas", renombrado para evitar conflicto)
   creado_en: string
   cliente?: { nombre: string; telefono: string | null } | null
-  nota?: { numero_nota: number | null; tipo_notas: { nombre: string } | null } | null
+  nota_rel?: { numero_nota: number | null; tipo_notas: { nombre: string } | null } | null
   orden_lineas: LineaOrden[]
 }
 
@@ -42,7 +42,7 @@ export async function cargarOrdenes(): Promise<OrdenTrabajo[]> {
     .select(`
       id, numero_orden, nota_id, cliente_id, notas, creado_en,
       clientes ( nombre, telefono ),
-      notas ( numero_nota, tipo_notas ( nombre ) ),
+      nota_rel:notas!nota_id ( numero_nota, tipo_notas ( nombre ) ),
       orden_lineas (
         id, tipologia_id, color_id, ancho_total, alto_total,
         alto_izquierda, alto_derecha, unidades_totales, referencia, posicion,
@@ -57,19 +57,27 @@ export async function cargarOrdenes(): Promise<OrdenTrabajo[]> {
   function unoOnulo(v: any) { return Array.isArray(v) ? (v[0] ?? null) : v }
 
   return (data ?? []).map((o: any) => ({
-    ...o,
-    cliente: unoOnulo(o.clientes),
-    nota:    unoOnulo(o.notas),
-    orden_lineas: [...(o.orden_lineas ?? [])].sort((a: any, b: any) => a.posicion - b.posicion).map((l: any) => ({
-      ...l,
-      color_nombre: unoOnulo(l.colores)?.nombre ?? null,
-      tipologia: l.tipologias
-        ? {
-            ...unoOnulo(l.tipologias),
-            tipologia_filas: [...(unoOnulo(l.tipologias)?.tipologia_filas ?? [])].sort((a: any, b: any) => a.posicion - b.posicion),
-          }
-        : null,
-    })),
+    id:            o.id,
+    numero_orden:  o.numero_orden,
+    nota_id:       o.nota_id,
+    cliente_id:    o.cliente_id,
+    observaciones: o.notas,
+    creado_en:     o.creado_en,
+    cliente:    unoOnulo(o.clientes),
+    nota_rel:   unoOnulo(o.nota_rel),
+    orden_lineas: [...(o.orden_lineas ?? [])]
+      .sort((a: any, b: any) => a.posicion - b.posicion)
+      .map((l: any) => ({
+        ...l,
+        color_nombre: unoOnulo(l.colores)?.nombre ?? null,
+        tipologia: l.tipologias
+          ? {
+              ...unoOnulo(l.tipologias),
+              tipologia_filas: [...(unoOnulo(l.tipologias)?.tipologia_filas ?? [])]
+                .sort((a: any, b: any) => a.posicion - b.posicion),
+            }
+          : null,
+      })),
   }))
 }
 
@@ -78,7 +86,7 @@ export async function cargarOrdenes(): Promise<OrdenTrabajo[]> {
 export async function crearOrden(datos: {
   nota_id: number | null
   cliente_id: number | null
-  notas: string
+  observaciones: string
   lineas: Omit<LineaOrden, 'id' | 'tipologia' | 'color_nombre'>[]
 }): Promise<{ id: number }> {
   const supabase = await createClient()
@@ -88,7 +96,7 @@ export async function crearOrden(datos: {
     .insert({
       nota_id:    datos.nota_id,
       cliente_id: datos.cliente_id,
-      notas:      datos.notas.trim() || null,
+      notas:      datos.observaciones.trim() || null,
     })
     .select('id')
     .single()
@@ -112,7 +120,7 @@ export async function actualizarOrden(
   datos: {
     nota_id: number | null
     cliente_id: number | null
-    notas: string
+    observaciones: string
     lineas: Omit<LineaOrden, 'id' | 'tipologia' | 'color_nombre'>[]
   }
 ): Promise<void> {
@@ -121,7 +129,7 @@ export async function actualizarOrden(
   await supabase.from('ordenes_trabajo').update({
     nota_id:        datos.nota_id,
     cliente_id:     datos.cliente_id,
-    notas:          datos.notas.trim() || null,
+    notas:          datos.observaciones.trim() || null,
     actualizado_en: new Date().toISOString(),
   }).eq('id', id)
 
@@ -145,7 +153,7 @@ export async function eliminarOrden(id: number): Promise<void> {
   revalidatePath('/ordenes')
 }
 
-// ─── BUSCAR NOTA POR NÚMERO (para enlazar) ────────────────────────────────────
+// ─── BUSCAR NOTA POR NÚMERO ───────────────────────────────────────────────────
 
 export async function buscarNotaParaOrden(numero: number) {
   const supabase = await createClient()
@@ -156,10 +164,16 @@ export async function buscarNotaParaOrden(numero: number) {
     .single()
   if (!data) return null
   function unoOnulo(v: any) { return Array.isArray(v) ? (v[0] ?? null) : v }
-  return { ...data, clientes: unoOnulo(data.clientes), tipo_notas: unoOnulo(data.tipo_notas) }
+  return {
+    id:         data.id,
+    numero_nota: data.numero_nota,
+    cliente_id: data.cliente_id,
+    clientes:   unoOnulo((data as any).clientes),
+    tipo_notas: unoOnulo((data as any).tipo_notas),
+  }
 }
 
-// ─── BUSCAR CLIENTE (para enlazar) ────────────────────────────────────────────
+// ─── BUSCAR CLIENTE ───────────────────────────────────────────────────────────
 
 export async function buscarClientesParaOrden(termino: string) {
   const supabase = await createClient()
