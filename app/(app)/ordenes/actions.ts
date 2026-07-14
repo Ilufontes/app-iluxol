@@ -4,9 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 export type VariableClave = 'ancho_total' | 'alto_total' | 'alto_izquierda' | 'alto_derecha'
+export type TuboLado = 'superior' | 'inferior' | 'izquierda' | 'derecha'
 export type FilaVariable   = { id?: number; tipo: 'variable'; variable_clave: VariableClave; posicion: number }
 export type FilaPerfil     = { id?: number; tipo: 'perfil'; nombre_perfil: string; formula: string; unidades: number; posicion: number }
-export type FilaTipologia  = FilaVariable | FilaPerfil
+export type FilaTubo       = { id?: number; tipo: 'tubo'; tubo_lado: TuboLado; unidades: number; posicion: number }
+export type FilaTipologia  = FilaVariable | FilaPerfil | FilaTubo
 
 export type TipoTubo = { id: number; nombre: string; descuento: number; activo: boolean }
 
@@ -102,7 +104,7 @@ export async function cargarTipologiasParaOrdenes(): Promise<Tipologia[]> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('tipologias')
-    .select('id, nombre, activo, imagen_url, tipo_tubo_id, tipos_tubo ( id, nombre, descuento, activo ), tipologia_filas ( id, tipo, variable_clave, nombre_perfil, formula, unidades, posicion )')
+    .select('id, nombre, activo, imagen_url, tipo_tubo_id, tipos_tubo ( id, nombre, descuento, activo ), tipologia_filas ( id, tipo, variable_clave, nombre_perfil, formula, unidades, posicion, tubo_lado, tubo_unidades )')
     .order('nombre')
   return (data ?? []).map((t: any) => ({
     ...t, imagen_url: t.imagen_url ?? null,
