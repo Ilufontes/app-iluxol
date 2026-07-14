@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { Tipologia, TipoTubo, FilaTipologia, FilaNueva, FilaVariableNueva, FilaPerfilNueva, VariableClave } from './actions'
+import type { Tipologia, TipoTubo, FilaTipologia, FilaNueva, FilaVariableNueva, FilaPerfilNueva, FilaTubaNueva, TuboLado, VariableClave } from './actions'
 import {
   crearTipologia,
   actualizarTipologia,
@@ -63,10 +63,13 @@ function EditorFilas({ filas, onChange }: {
   filas: FilaNueva[]
   onChange: (filas: FilaNueva[]) => void
 }) {
-  function añadir(tipo: 'variable' | 'perfil') {
+  function añadir(tipo: 'variable' | 'perfil' | 'tubo') {
     const posicion = filas.length
     if (tipo === 'variable') {
       const nueva: FilaVariableNueva = { tipo: 'variable', variable_clave: 'ancho_total', posicion }
+      onChange([...filas, nueva])
+    } else if (tipo === 'tubo') {
+      const nueva: FilaTubaNueva = { tipo: 'tubo', tubo_lado: 'superior', unidades: 1, posicion }
       onChange([...filas, nueva])
     } else {
       const nueva: FilaPerfilNueva = { tipo: 'perfil', nombre_perfil: '', formula: '', unidades: 1, posicion }
@@ -107,10 +110,10 @@ function EditorFilas({ filas, onChange }: {
 
             <span style={{
               fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 5,
-              background: fila.tipo === 'variable' ? '#16a34a' : '#3b82f6',
-              color: '#fff', whiteSpace: 'nowrap', flexShrink: 0,
+              background: fila.tipo === 'variable' ? '#16a34a' : fila.tipo === 'tubo' ? '#f59e0b' : '#3b82f6',
+              color: fila.tipo === 'tubo' ? '#1c2230' : '#fff', whiteSpace: 'nowrap', flexShrink: 0,
             }}>
-              {fila.tipo === 'variable' ? 'MEDIDA' : 'PERFIL'}
+              {fila.tipo === 'variable' ? 'MEDIDA' : fila.tipo === 'tubo' ? 'TUBO' : 'PERFIL'}
             </span>
 
             {fila.tipo === 'variable' ? (
@@ -123,6 +126,28 @@ function EditorFilas({ filas, onChange }: {
                   <option key={v.clave} value={v.clave}>{v.etiqueta}</option>
                 ))}
               </select>
+            ) : fila.tipo === 'tubo' ? (
+              <>
+                <select
+                  value={fila.tubo_lado}
+                  onChange={e => actualizar(idx, { tubo_lado: e.target.value as TuboLado })}
+                  style={{ ...inp, flex: 2 }}
+                >
+                  <option value="superior">Superior</option>
+                  <option value="inferior">Inferior</option>
+                  <option value="izquierda">Izquierda</option>
+                  <option value="derecha">Derecha</option>
+                </select>
+                <span style={{ fontSize: 11, color: '#6b7280', flex: 2, alignSelf: 'center', paddingLeft: 4 }}>
+                  {fila.tubo_lado === 'superior' || fila.tubo_lado === 'inferior'
+                    ? 'ancho_total + (laterales × desc)'
+                    : fila.tubo_lado === 'izquierda' ? 'alto_izquierda + (horiz × desc)' : 'alto_derecha + (horiz × desc)'}
+                </span>
+                <input type="number" min={1} value={fila.unidades}
+                  onChange={e => actualizar(idx, { unidades: Number(e.target.value) })}
+                  style={{ ...inp, width: 60, flexShrink: 0 }} title="Unidades" />
+                <span style={{ fontSize: 11, color: '#6b7280', flexShrink: 0 }}>ud</span>
+              </>
             ) : (
               <>
                 <input
@@ -162,6 +187,7 @@ function EditorFilas({ filas, onChange }: {
       <div style={{ display: 'flex', gap: 8 }}>
         <button onClick={() => añadir('variable')} style={btn('#16a34a')}>+ Medida</button>
         <button onClick={() => añadir('perfil')}   style={btn('#3b82f6')}>+ Perfil</button>
+        <button onClick={() => añadir('tubo')}     style={btn('#f59e0b', '#1c2230')}>+ Tubo</button>
       </div>
     </div>
   )
