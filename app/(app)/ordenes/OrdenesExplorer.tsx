@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import type { OrdenTrabajo, LineaOrden, Tipologia, Color, TipoTubo } from './actions'
+import type { OrdenTrabajo, LineaOrden, Tipologia, Color, TipoTubo, FilaTubo, TuboLado } from './actions'
 import {
   crearOrden, actualizarOrden, eliminarOrden,
   buscarNotaParaOrden, buscarClientesParaOrden,
@@ -85,8 +85,16 @@ function EditorLinea({ linea, tipologias, colores, onChange, onEliminar }: {
     onChange({ ...linea, tubo_superior: val, tubo_inferior: val, tubo_izquierda: val, tubo_derecha: val })
   }
 
+  // Validación de campos obligatorios
+  const medidaFaltante = variables.length > 0 && variables.some(v => {
+    if (v.tipo !== 'variable') return false
+    return !medidas[v.variable_clave]
+  })
+  const colorFaltante = colores.filter(c => c.activo).length > 0 && !linea.color_id
+  const hayAdvertencias = medidaFaltante || colorFaltante
+
   return (
-    <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 14, background: '#f8fafc' }}>
+    <div style={{ border: `1px solid ${hayAdvertencias ? '#fbbf24' : '#e2e8f0'}`, borderRadius: 10, padding: 14, background: hayAdvertencias ? '#fffbeb' : '#f8fafc' }}>
       {/* Fila superior: tipología, color, unidades, referencia */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
         <div style={{ flex: '2 1 180px' }}>
@@ -173,7 +181,56 @@ function EditorLinea({ linea, tipologias, colores, onChange, onEliminar }: {
         </div>
       )}
 
+      {/* Advertencias de campos faltantes */}
+      {hayAdvertencias && (
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', padding: '6px 10px', background: '#fef3c7', borderRadius: 7, marginBottom: 8, border: '1px solid #fbbf24' }}>
+          <span style={{ fontSize: 12, color: '#92400e', fontWeight: 500 }}>⚠️ Advertencia:</span>
+          {colorFaltante && <span style={{ fontSize: 12, color: '#92400e' }}>Falta el color</span>}
+          {medidaFaltante && <span style={{ fontSize: 12, color: '#92400e' }}>Faltan medidas</span>}
+        </div>
+      )}
+
       {/* Cortes de perfiles en tiempo real */}
+      {/* Filas de tubo de la tipología */}
+      {(() => {
+        const filasTubo = tip?.tipologia_filas.filter((f): f is FilaTubo => f.tipo === 'tubo') ?? []
+        const tubosActivos = filasTubo.filter(f => {
+          if (f.tubo_lado === 'superior') return linea.tubo_superior
+          if (f.tubo_lado === 'inferior') return linea.tubo_inferior
+          if (f.tubo_lado === 'izquierda') return linea.tubo_izquierda
+          if (f.tubo_lado === 'derecha') return linea.tubo_derecha
+          return false
+        })
+        if (!tubosActivos.length || !tipoTubo) return null
+        const d = tipoTubo.descuento
+        const laterales  = (linea.tubo_izquierda ? 1 : 0) + (linea.tubo_derecha  ? 1 : 0)
+        const horizontales = (linea.tubo_superior ? 1 : 0) + (linea.tubo_inferior ? 1 : 0)
+        return (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginBottom: 6 }}>
+            <thead><tr style={{ background: '#f59e0b' }}>
+              <th style={{ padding: '4px 8px', textAlign: 'left', color: '#1c2230' }}>Tubo {tipoTubo.nombre}</th>
+              <th style={{ padding: '4px 8px', textAlign: 'center', color: '#1c2230' }}>Ud.</th>
+              <th style={{ padding: '4px 8px', textAlign: 'right', color: '#1c2230' }}>Corte mm</th>
+            </tr></thead>
+            <tbody>
+              {tubosActivos.map((t, i) => {
+                const lado = t.tubo_lado
+                const medida = (lado === 'superior' || lado === 'inferior')
+                  ? (medidas.ancho_total + laterales * d)
+                  : (lado === 'izquierda' ? medidas.alto_izquierda + horizontales * d : medidas.alto_derecha + horizontales * d)
+                return (
+                  <tr key={i} style={{ borderBottom: '1px solid #fde68a', background: '#fffbf4' }}>
+                    <td style={{ padding: '4px 8px', textTransform: 'capitalize' }}>{lado}</td>
+                    <td style={{ padding: '4px 8px', textAlign: 'center' }}>{t.unidades}</td>
+                    <td style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 700, color: '#92400e' }}>{medida}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )
+      })()}
+
       {perfiles.length > 0 && tip && (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
           <thead>
