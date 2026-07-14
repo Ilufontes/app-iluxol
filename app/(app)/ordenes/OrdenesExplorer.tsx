@@ -297,16 +297,25 @@ function FormularioOrden({ inicial, tipologias, colores, onGuardada, onCancelar 
   const [guardando, setGuardando] = useState(false)
   const [err, setErr] = useState('')
 
-  async function buscarNota() {
-    const n = parseInt(busNota); if (!n) { setErrNota('Número inválido.'); return }
+  async function ejecutarBusquedaNota(num: string) {
+    const n = parseInt(num)
+    if (!n || n < 1) return
     setCargNota(true); setErrNota('')
     try {
       const r = await buscarNotaParaOrden(n)
-      if (!r) { setErrNota('No encontrada.'); return }
-      setNotaInfo(r); setNotaId(r.id)
+      if (!r) { setErrNota(`Nota ${n} no encontrada.`); return }
+      setNotaInfo(r); setNotaId(r.id); setErrNota('')
       if (!cliId && r.clientes) { setCliInfo(r.clientes); setCliId(r.cliente_id) }
-    } catch { setErrNota('Error.') } finally { setCargNota(false) }
+    } catch { setErrNota('Error al buscar.') } finally { setCargNota(false) }
   }
+
+  // Auto-busca nota al dejar de escribir (400ms)
+  useEffect(() => {
+    if (!busNota) return
+    const t = setTimeout(() => ejecutarBusquedaNota(busNota), 400)
+    return () => clearTimeout(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busNota])
 
   useEffect(() => {
     const t = setTimeout(async () => {
@@ -347,7 +356,7 @@ function FormularioOrden({ inicial, tipologias, colores, onGuardada, onCancelar 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {/* Nota */}
-      <div style={{ ...card, padding: 14 }}>
+      <div style={{ ...card, padding: 14, overflow: 'visible' }}>
         <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: '#374151' }}>NOTA RELACIONADA (opcional)</p>
         {notaInfo ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -355,17 +364,21 @@ function FormularioOrden({ inicial, tipologias, colores, onGuardada, onCancelar 
             <button onClick={() => { setNotaInfo(null); setNotaId(null); setBusNota('') }} style={btn('#f3f4f6', '#374151')}>Quitar</button>
           </div>
         ) : (
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input type="number" value={busNota} onChange={e => setBusNota(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && buscarNota()} placeholder="Nº nota…" style={{ ...inp, flex: 1 }} />
-            <button onClick={buscarNota} disabled={cargNota} style={btn('#1c2230')}>{cargNota ? '…' : 'Buscar'}</button>
+          <div style={{ position: 'relative' }}>
+            <input type="number" value={busNota}
+              onChange={e => setBusNota(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && ejecutarBusquedaNota(busNota)}
+              placeholder="Escribe el número de nota…" style={inp} />
+            {cargNota && (
+              <span style={{ position: 'absolute', right: 10, top: 8, fontSize: 12, color: '#9ca3af' }}>Buscando…</span>
+            )}
           </div>
         )}
         {errNota && <p style={{ color: '#dc2626', fontSize: 12, margin: '5px 0 0' }}>{errNota}</p>}
       </div>
 
       {/* Cliente */}
-      <div style={{ ...card, padding: 14 }}>
+      <div style={{ ...card, padding: 14, overflow: 'visible' }}>
         <p style={{ margin: '0 0 8px', fontSize: 12, fontWeight: 600, color: '#374151' }}>CLIENTE (opcional)</p>
         {cliInfo ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -378,7 +391,7 @@ function FormularioOrden({ inicial, tipologias, colores, onGuardada, onCancelar 
               placeholder="Escribe nombre o teléfono…" style={inp} />
             {cargCli && <span style={{ position: 'absolute', right: 10, top: 8, fontSize: 12, color: '#9ca3af' }}>…</span>}
             {resCli.length > 0 && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', overflow: 'hidden', marginTop: 4 }}>
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', overflow: 'hidden', marginTop: 4 }}>
                 {resCli.map(c => (
                   <div key={c.id} onClick={() => { setCliInfo(c); setCliId(c.id); setResCli([]); setBusCli('') }}
                     style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13, borderBottom: '1px solid #f3f4f6' }}
