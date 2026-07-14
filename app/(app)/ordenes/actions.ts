@@ -40,6 +40,7 @@ export type LineaOrden = {
   tubo_inferior:   boolean
   tubo_izquierda:  boolean
   tubo_derecha:    boolean
+  tipo_tubo_id:    number | null
 }
 
 export type OrdenTrabajo = {
@@ -63,7 +64,7 @@ const SELECT_LINEAS = `
   id, tipologia_id, color_id,
   ancho_total, alto_total, alto_izquierda, alto_derecha,
   unidades_totales, referencia, posicion,
-  tubo_superior, tubo_inferior, tubo_izquierda, tubo_derecha,
+  tubo_superior, tubo_inferior, tubo_izquierda, tubo_derecha, tipo_tubo_id,
   tipologias (
     id, nombre, activo, imagen_url, tipo_tubo_id,
     tipos_tubo ( id, nombre, descuento, activo ),
@@ -87,6 +88,7 @@ function normalizarLineas(lineas: any[]): LineaOrden[] {
       tubo_inferior:  l.tubo_inferior  ?? false,
       tubo_izquierda: l.tubo_izquierda ?? false,
       tubo_derecha:   l.tubo_derecha   ?? false,
+      tipo_tubo_id:   l.tipo_tubo_id   ?? null,
       tipologia: tip ? {
         ...tip,
         imagen_url:   tip.imagen_url   ?? null,
@@ -171,6 +173,7 @@ export async function crearOrden(datos: {
         unidades_totales: l.unidades_totales, referencia: l.referencia,
         tubo_superior: l.tubo_superior, tubo_inferior: l.tubo_inferior,
         tubo_izquierda: l.tubo_izquierda, tubo_derecha: l.tubo_derecha,
+        tipo_tubo_id: l.tipo_tubo_id ?? null,
       }))
     )
   }
@@ -199,6 +202,7 @@ export async function actualizarOrden(id: number, datos: {
         unidades_totales: l.unidades_totales, referencia: l.referencia,
         tubo_superior: l.tubo_superior, tubo_inferior: l.tubo_inferior,
         tubo_izquierda: l.tubo_izquierda, tubo_derecha: l.tubo_derecha,
+        tipo_tubo_id: l.tipo_tubo_id ?? null,
       }))
     )
   }
