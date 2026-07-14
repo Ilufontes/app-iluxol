@@ -344,7 +344,7 @@ function FormularioOrden({ inicial, tipologias, colores, tiposTubo, onGuardada, 
       ancho_total: null, alto_total: null, alto_izquierda: null, alto_derecha: null,
       unidades_totales: 1, referencia: '', posicion: prev.length,
       tubo_superior: false, tubo_inferior: false, tubo_izquierda: false, tubo_derecha: false,
-      tipo_tubo_id: tip?.tipo_tubo?.id ?? null,
+      tipo_tubo_id: primera?.tipo_tubo?.id ?? null,
     }])
   }
 
