@@ -27,8 +27,7 @@ const ETIQ: Record<string, string> = {
 // ─── CÁLCULO DE TUBOS ─────────────────────────────────────────────────────────
 
 function calcularTubos(linea: Omit<LineaOrden, 'id' | 'tipologia' | 'color_nombre'>, tipoTubo: TipoTubo | null) {
-  if (!tipoTubo) return []
-  const d = tipoTubo.descuento
+  const d = tipoTubo?.descuento ?? 0
   const ancho  = linea.ancho_total    ?? 0
   const altIzq = linea.alto_izquierda ?? linea.alto_total ?? 0
   const altDer = linea.alto_derecha   ?? linea.alto_total ?? 0
@@ -141,12 +140,12 @@ function EditorLinea({ linea, tipologias, colores, onChange, onEliminar }: {
         </div>
       )}
 
-      {/* Tubos opcionales (solo si la tipología tiene tipo_tubo) */}
-      {tipoTubo && (
+      {/* Tubos opcionales: aparece si la tipología tiene tipo_tubo O tiene filas TUBO */}
+      {(tipoTubo || (tip?.tipologia_filas ?? []).some(f => f.tipo === 'tubo')) && (
         <div style={{ background: '#fff8ed', border: '1px solid #fed7aa', borderRadius: 8, padding: 10, marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: '#92400e' }}>
-              TUBOS {tipoTubo.nombre} · {tipoTubo.descuento}mm descuento
+              TUBOS {tipoTubo ? `${tipoTubo.nombre} · ${tipoTubo.descuento}mm descuento` : '(asigna un tipo de tubo en la tipología para calcular medidas)'}
             </span>
             {/* Marco completo */}
             <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, cursor: 'pointer', fontWeight: 600, color: '#1c2230' }}>
@@ -201,7 +200,7 @@ function EditorLinea({ linea, tipologias, colores, onChange, onEliminar }: {
           if (f.tubo_lado === 'derecha') return linea.tubo_derecha
           return false
         })
-        if (!tubosActivos.length || !tipoTubo) return null
+        if (!tubosActivos.length) return null
         const d = tipoTubo.descuento
         const laterales  = (linea.tubo_izquierda ? 1 : 0) + (linea.tubo_derecha  ? 1 : 0)
         const horizontales = (linea.tubo_superior ? 1 : 0) + (linea.tubo_inferior ? 1 : 0)
