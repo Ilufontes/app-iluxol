@@ -77,7 +77,7 @@ function EditorFilas({ filas, onChange }: {
     }
   }
 
-  function actualizar(idx: number, cambios: Partial<FilaVariableNueva> | Partial<FilaPerfilNueva>) {
+  function actualizar(idx: number, cambios: Partial<FilaVariableNueva> | Partial<FilaPerfilNueva> | Partial<FilaTubaNueva>) {
     onChange(filas.map((f, i) => i === idx ? { ...f, ...cambios } as FilaNueva : f))
   }
 
