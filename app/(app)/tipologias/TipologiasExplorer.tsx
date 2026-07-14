@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { Tipologia, FilaTipologia, FilaNueva, FilaVariableNueva, FilaPerfilNueva, VariableClave } from './actions'
+import type { Tipologia, TipoTubo, FilaTipologia, FilaNueva, FilaVariableNueva, FilaPerfilNueva, VariableClave } from './actions'
 import {
   crearTipologia,
   actualizarTipologia,
@@ -10,6 +10,8 @@ import {
   toggleActivoColor,
   subirImagenTipologia,
   borrarImagenTipologia,
+  cargarTiposTubo,
+  actualizarTipoTuboTipologia,
 } from './actions'
 
 // ─── EVALUADOR DE FÓRMULAS ────────────────────────────────────────────────────
@@ -179,6 +181,14 @@ function FormularioTipologia({ inicial, onGuardada, onCancelar }: {
   const [error,       setError]       = useState('')
   const [imagenUrl,   setImagenUrl]   = useState<string | null>(inicial?.imagen_url ?? null)
   const [subiendoImg, setSubiendoImg] = useState(false)
+  const [tiposTubo,   setTiposTubo]   = useState<TipoTubo[]>([])
+  const [tipoTuboId,  setTipoTuboId]  = useState<number | null>(inicial?.tipo_tubo_id ?? null)
+  const [cargandoTubos, setCargandoTubos] = useState(false)
+
+  // Cargar tipos de tubo al montar
+  useState(() => {
+    cargarTiposTubo().then(setTiposTubo).catch(() => {})
+  })
 
   async function handleImagen(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -285,6 +295,31 @@ function FormularioTipologia({ inicial, onGuardada, onCancelar }: {
           </table>
         </div>
       )}
+
+      {/* TIPO DE TUBO */}
+      <div>
+        <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>TIPO DE TUBO (opcional)</label>
+        <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 6px' }}>
+          Si esta tipología puede llevar tubos, selecciona el tipo. Luego en las órdenes aparecerán los checkboxes de lados.
+        </p>
+        <select
+          value={tipoTuboId ?? ''}
+          onChange={async e => {
+            const val = e.target.value ? Number(e.target.value) : null
+            setTipoTuboId(val)
+            if (inicial?.id) await actualizarTipoTuboTipologia(inicial.id, val)
+          }}
+          style={inp}
+        >
+          <option value="">Sin tubos</option>
+          {tiposTubo.filter(t => t.activo).map(t => (
+            <option key={t.id} value={t.id}>{t.nombre} ({t.descuento}mm descuento)</option>
+          ))}
+        </select>
+        {!inicial?.id && tipoTuboId === null && (
+          <p style={{ fontSize: 11, color: '#9ca3af', margin: '4px 0 0' }}>Guarda primero la tipología para asignar tipo de tubo.</p>
+        )}
+      </div>
 
       {/* IMAGEN */}
       <div>
