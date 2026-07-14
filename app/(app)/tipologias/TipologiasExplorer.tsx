@@ -6,8 +6,6 @@ import {
   crearTipologia,
   actualizarTipologia,
   toggleActivoTipologia,
-  crearColor,
-  toggleActivoColor,
   subirImagenTipologia,
   borrarImagenTipologia,
   cargarTiposTubo,
@@ -370,73 +368,12 @@ function FormularioTipologia({ inicial, onGuardada, onCancelar }: {
   )
 }
 
-// ─── PANEL DE COLORES ─────────────────────────────────────────────────────────
-
-function PanelColores({ coloresIniciales }: { coloresIniciales: { id: number; nombre: string; activo: boolean }[] }) {
-  const [colores,    setColores]    = useState(coloresIniciales)
-  const [nuevoColor, setNuevoColor] = useState('')
-  const [error,      setError]      = useState('')
-
-  async function añadir() {
-    if (!nuevoColor.trim()) return
-    setError('')
-    try {
-      await crearColor(nuevoColor)
-      setColores(prev => [...prev, { id: Date.now(), nombre: nuevoColor.trim().toUpperCase(), activo: true }])
-      setNuevoColor('')
-    } catch (e: any) { setError(e.message) }
-  }
-
-  async function toggleColor(id: number, activo: boolean) {
-    await toggleActivoColor(id, activo)
-    setColores(prev => prev.map(c => c.id === id ? { ...c, activo } : c))
-  }
-
-  return (
-    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20 }}>
-      <h3 style={{ margin: '0 0 14px', fontSize: 15, fontWeight: 600, color: '#1c2230' }}>Colores</h3>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-        <input
-          value={nuevoColor} onChange={e => setNuevoColor(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && añadir()}
-          placeholder="Ej: PLATA, BRONCE, BLANCO…"
-          style={{ ...inp, flex: 1 }}
-        />
-        <button onClick={añadir} style={btn('#1c2230')}>Añadir</button>
-      </div>
-      {error && <p style={{ color: '#dc2626', fontSize: 12, margin: '0 0 8px' }}>{error}</p>}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {colores.map(c => (
-          <div key={c.id} style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            background: c.activo ? '#f3f4f6' : '#fee2e2',
-            border: `1px solid ${c.activo ? '#d1d5db' : '#fca5a5'}`,
-            borderRadius: 8, padding: '4px 10px', fontSize: 13,
-          }}>
-            <span style={{ color: c.activo ? '#1c2230' : '#9ca3af', textDecoration: c.activo ? 'none' : 'line-through' }}>
-              {c.nombre}
-            </span>
-            <button
-              onClick={() => toggleColor(c.id, !c.activo)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#6b7280', padding: 0 }}
-            >
-              {c.activo ? '✕' : '↩'}
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 // ─── COMPONENTE PRINCIPAL ─────────────────────────────────────────────────────
 
 export default function TipologiasExplorer({
   tipologiasIniciales,
-  coloresIniciales,
 }: {
   tipologiasIniciales: Tipologia[]
-  coloresIniciales: { id: number; nombre: string; activo: boolean }[]
 }) {
   const [tipologias, setTipologias] = useState<Tipologia[]>(tipologiasIniciales)
   const [modo,       setModo]       = useState<'lista' | 'nueva' | 'editar'>('lista')
@@ -580,7 +517,6 @@ export default function TipologiasExplorer({
         ))}
       </div>
 
-      <PanelColores coloresIniciales={coloresIniciales} />
     </div>
   )
 }
