@@ -245,7 +245,7 @@ function FormularioOrden({ inicial, tipologias, colores, onGuardada, onCancelar 
         ) : (
           <>
             <div style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
-              <input value={busCli} onChange={e => setBusCli(e.target.value)} onKeyDown={e => e.key === 'Enter' && buscarCli()} placeholder="Nombre o teléfono…" style={{ ...inp, flex: 1 }} />
+              <input value={busCli} onChange={e => setBusCli(e.target.value)} onKeyDown={e => e.key === 'Enter' && buscarCli(busCli)} placeholder="Nombre o teléfono…" style={{ ...inp, flex: 1 }} />
 
             </div>
             {resCli.length > 0 && (
