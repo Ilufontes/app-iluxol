@@ -2,9 +2,24 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import type { Tipologia } from '../tipologias/actions'
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
+
+export type VariableClave = 'ancho_total' | 'alto_total' | 'alto_izquierda' | 'alto_derecha'
+
+export type FilaVariable = {
+  id?: number; tipo: 'variable'; variable_clave: VariableClave; posicion: number
+}
+export type FilaPerfil = {
+  id?: number; tipo: 'perfil'; nombre_perfil: string; formula: string; unidades: number; posicion: number
+}
+export type FilaTipologia = FilaVariable | FilaPerfil
+
+export type Tipologia = {
+  id: number; nombre: string; activo: boolean; tipologia_filas: FilaTipologia[]
+}
+
+export type Color = { id: number; nombre: string; activo: boolean }
 
 export type LineaOrden = {
   id?: number
@@ -25,8 +40,7 @@ export type OrdenTrabajo = {
   id: number
   numero_orden: number | null
   nota_id: number | null
-  numero_nota_rel: number | null   // numero_nota de la nota relacionada (cargado aparte)
-  tipo_nota_rel: string | null     // nombre del tipo de nota relacionada
+  numero_nota_rel: number | null
   cliente_id: number | null
   cliente_nombre: string | null
   cliente_telefono: string | null
@@ -35,22 +49,42 @@ export type OrdenTrabajo = {
   orden_lineas: LineaOrden[]
 }
 
-// ─── LISTADO ──────────────────────────────────────────────────────────────────
+// ─── CARGAR DATOS DE APOYO ────────────────────────────────────────────────────
+
+export async function cargarTipologiasParaOrdenes(): Promise<Tipologia[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from('tipologias')
+    .select('id, nombre, activo, tipologia_filas ( id, tipo, variable_clave, nombre_perfil, formula, unidades, posicion )')
+    .order('nombre')
+  return (data ?? []).map((t: any) => ({
+    ...t,
+    tipologia_filas: [...(t.tipologia_filas ?? [])].sort((a: any, b: any) => a.posicion - b.posicion),
+  }))
+}
+
+export async function cargarColoresParaOrdenes(): Promise<Color[]> {
+  const supabase = await createClient()
+  const { data } = await supabase.from('colores').select('id, nombre, activo').order('nombre')
+  return data ?? []
+}
+
+// ─── LISTADO DE ÓRDENES ───────────────────────────────────────────────────────
 
 export async function cargarOrdenes(): Promise<OrdenTrabajo[]> {
   const supabase = await createClient()
 
-  // Query simple: sin join a tabla notas para evitar conflicto de nombres
   const { data, error } = await supabase
     .from('ordenes_trabajo')
     .select(`
       id, numero_orden, nota_id, cliente_id, notas, creado_en,
       clientes ( nombre, telefono ),
       orden_lineas (
-        id, tipologia_id, color_id, ancho_total, alto_total,
-        alto_izquierda, alto_derecha, unidades_totales, referencia, posicion,
+        id, tipologia_id, color_id,
+        ancho_total, alto_total, alto_izquierda, alto_derecha,
+        unidades_totales, referencia, posicion,
         tipologias (
-          id, nombre, activo, notas,
+          id, nombre, activo,
           tipologia_filas ( id, tipo, variable_clave, nombre_perfil, formula, unidades, posicion )
         ),
         colores ( nombre )
@@ -71,8 +105,7 @@ export async function cargarOrdenes(): Promise<OrdenTrabajo[]> {
       id:               o.id,
       numero_orden:     o.numero_orden,
       nota_id:          o.nota_id,
-      numero_nota_rel:  null,   // se carga solo al abrir el formulario de edición
-      tipo_nota_rel:    null,
+      numero_nota_rel:  null,
       cliente_id:       o.cliente_id,
       cliente_nombre:   cliente?.nombre   ?? null,
       cliente_telefono: cliente?.telefono ?? null,
@@ -116,18 +149,14 @@ export async function crearOrden(datos: {
 
   const { data: orden, error } = await supabase
     .from('ordenes_trabajo')
-    .insert({
-      nota_id:    datos.nota_id,
-      cliente_id: datos.cliente_id,
-      notas:      datos.observaciones.trim() || null,
-    })
+    .insert({ nota_id: datos.nota_id, cliente_id: datos.cliente_id, notas: datos.observaciones.trim() || null })
     .select('id')
     .single()
 
   if (error || !orden) throw new Error('No se pudo crear la orden.')
 
   if (datos.lineas.length > 0) {
-    const { error: errLineas } = await supabase.from('orden_lineas').insert(
+    await supabase.from('orden_lineas').insert(
       datos.lineas.map((l, i) => ({
         orden_id: orden.id, posicion: i,
         tipologia_id: l.tipologia_id, color_id: l.color_id,
@@ -136,7 +165,6 @@ export async function crearOrden(datos: {
         unidades_totales: l.unidades_totales, referencia: l.referencia,
       }))
     )
-    if (errLineas) console.error('[crearOrden lineas]', errLineas.message)
   }
 
   revalidatePath('/ordenes')
@@ -157,9 +185,8 @@ export async function actualizarOrden(
   const supabase = await createClient()
 
   await supabase.from('ordenes_trabajo').update({
-    nota_id:        datos.nota_id,
-    cliente_id:     datos.cliente_id,
-    notas:          datos.observaciones.trim() || null,
+    nota_id: datos.nota_id, cliente_id: datos.cliente_id,
+    notas: datos.observaciones.trim() || null,
     actualizado_en: new Date().toISOString(),
   }).eq('id', id)
 
@@ -189,7 +216,7 @@ export async function eliminarOrden(id: number): Promise<void> {
   revalidatePath('/ordenes')
 }
 
-// ─── BUSCAR NOTA POR NÚMERO ───────────────────────────────────────────────────
+// ─── BUSCAR NOTA ──────────────────────────────────────────────────────────────
 
 export async function buscarNotaParaOrden(numero: number) {
   const supabase = await createClient()
@@ -201,11 +228,8 @@ export async function buscarNotaParaOrden(numero: number) {
   if (!data) return null
   function uno(v: any) { return Array.isArray(v) ? (v[0] ?? null) : v }
   return {
-    id:          data.id,
-    numero_nota: data.numero_nota,
-    cliente_id:  data.cliente_id,
-    clientes:    uno((data as any).clientes),
-    tipo_notas:  uno((data as any).tipo_notas),
+    id: data.id, numero_nota: data.numero_nota, cliente_id: data.cliente_id,
+    clientes: uno((data as any).clientes), tipo_notas: uno((data as any).tipo_notas),
   }
 }
 
@@ -216,8 +240,7 @@ export async function buscarClientesParaOrden(termino: string) {
   const t = termino.trim()
   if (!t) return []
   const { data } = await supabase
-    .from('clientes')
-    .select('id, nombre, telefono')
+    .from('clientes').select('id, nombre, telefono')
     .or(`nombre.ilike.%${t}%,telefono.ilike.%${t}%`)
     .limit(8)
   return data ?? []
