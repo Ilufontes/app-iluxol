@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
@@ -47,9 +49,11 @@ async function cargarOrden(id: number) {
   const cliente = uno((o as any).clientes)
 
   let numero_nota = null
+  let observaciones_nota = null
   if ((o as any).nota_id) {
-    const { data: nota } = await supabase.from('notas').select('numero_nota').eq('id', (o as any).nota_id).single()
-    numero_nota = nota?.numero_nota ?? null
+    const { data: nota } = await supabase.from('notas').select('numero_nota, observaciones').eq('id', (o as any).nota_id).single()
+    numero_nota           = nota?.numero_nota    ?? null
+    observaciones_nota    = nota?.observaciones  ?? null
   }
   const { data: ttData } = await supabase.from('tipos_tubo').select('id, nombre, descuento')
   const ttMap: Record<number, { id: number; nombre: string; descuento: number }> = Object.fromEntries((ttData ?? []).map((t: any) => [t.id, t]))
@@ -86,8 +90,9 @@ async function cargarOrden(id: number) {
     numero_nota,
     cliente_nombre:   cliente?.nombre   ?? null,
     cliente_telefono: cliente?.telefono ?? null,
-    observaciones: (o as any).notas,
-    creado_en:     (o as any).creado_en,
+    observaciones:      (o as any).notas,
+    observaciones_nota: observaciones_nota,
+    creado_en:          (o as any).creado_en,
     lineas,
   }
 }
@@ -164,10 +169,9 @@ export default async function OrdenesImprimirPage({ params }: { params: Promise<
             {orden.nota_id && <span><strong>Nota:</strong> #{orden.numero_nota ?? orden.nota_id}</span>}
           </div>
         )}
-
         {orden.observaciones && (
-          <div style={{ margin: '-8px 0 14px', padding: '8px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, fontSize: 13, color: '#92400e', fontStyle: 'italic' }}>
-            📝 {orden.observaciones}
+          <div style={{ margin: '0 0 14px', padding: '8px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, fontSize: 13, color: '#92400e' }}>
+            <strong>Observaciones:</strong> {orden.observaciones}
           </div>
         )}
 
