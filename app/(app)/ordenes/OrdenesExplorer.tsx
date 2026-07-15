@@ -256,7 +256,7 @@ function EditorLinea({ linea, tipologias, colores, tiposTubo, onChange, onElimin
                 <tr key={i} style={{ borderBottom: '1px solid #e2e8f0', background: i % 2 ? '#fafafa' : '#fff' }}>
                   <td style={{ padding: '4px 8px' }}>{p.nombre_perfil}</td>
                   <td style={{ padding: '4px 8px', fontFamily: 'monospace', color: '#6b7280' }}>{p.formula}</td>
-                  <td style={{ padding: '4px 8px', textAlign: 'center' }}>{p.unidades}</td>
+                  <td style={{ padding: '4px 8px', textAlign: 'center' }}>{p.unidades * linea.unidades_totales}</td>
                   <td style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 700, color: '#1c2230' }}>
                     {evalFormula(p.formula, medidas)}
                   </td>
@@ -496,7 +496,7 @@ function VistaOrden({ orden }: { orden: OrdenTrabajo }) {
                       return (
                         <tr key={j} style={{ borderTop: '1px solid #f3f4f6', background: j % 2 ? '#fafafa' : '#fff' }}>
                           <td style={{ padding: '5px 10px' }}>{p.nombre_perfil}</td>
-                          <td style={{ padding: '5px 10px', textAlign: 'center' }}>{p.unidades}</td>
+                          <td style={{ padding: '5px 10px', textAlign: 'center' }}>{p.unidades * linea.unidades_totales}</td>
                           <td style={{ padding: '5px 10px', textAlign: 'right', fontWeight: 700, fontSize: 14, color: '#1c2230' }}>{evalFormula(p.formula, medidas)}</td>
                         </tr>
                       )
@@ -588,11 +588,11 @@ export default function OrdenesExplorer({ ordenesIniciales, tipologias, colores,
               {o.observaciones && <span style={{ marginLeft: 10, fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>· {o.observaciones}</span>}
             </div>
             <span style={{ fontSize: 12, color: '#9ca3af' }}>{new Date(o.creado_en).toLocaleDateString('es-ES')}</span>
-            <button
-              onClick={e => { e.stopPropagation(); window.open(`/ordenes-imprimir/${o.id}?t=${Date.now()}`, '_blank') }}
-              style={btn('#f0fdf4', '#16a34a')}>
+            <a href={`/ordenes-imprimir/${o.id}`} target="_blank" rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              style={{ ...btn('#f0fdf4', '#16a34a'), display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
               🖨 Imprimir
-            </button>
+            </a>
             <button onClick={e => { e.stopPropagation(); setEditando(o); setModo('editar') }} style={btn('#f3f4f6', '#374151')}>Editar</button>
             <button onClick={e => { e.stopPropagation(); onEliminar(o.id) }} disabled={eliminando === o.id} style={btn('#fee2e2', '#dc2626')}>
               {eliminando === o.id ? '…' : 'Eliminar'}
