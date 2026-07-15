@@ -193,7 +193,7 @@ export async function actualizarOrden(id: number, datos: {
   }).eq('id', id)
   await supabase.from('orden_lineas').delete().eq('orden_id', id)
   if (datos.lineas.length > 0) {
-    await supabase.from('orden_lineas').insert(
+    const { error: errLineas } = await supabase.from('orden_lineas').insert(
       datos.lineas.map((l, i) => ({
         orden_id: id, posicion: i,
         tipologia_id: l.tipologia_id, color_id: l.color_id,
@@ -205,6 +205,10 @@ export async function actualizarOrden(id: number, datos: {
         tipo_tubo_id: l.tipo_tubo_id ?? null,
       }))
     )
+    if (errLineas) {
+      console.error('[actualizarOrden] Error insertando líneas:', errLineas.message)
+      throw new Error('No se pudieron guardar las líneas de la orden.')
+    }
   }
   revalidatePath('/ordenes')
 }
