@@ -430,13 +430,26 @@ function FormularioOrden({ inicial, tipologias, colores, tiposTubo, onGuardada, 
           <label style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>LÍNEAS</label>
           <button onClick={añadirLinea} style={btn('#1c2230')}>+ Añadir línea</button>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {lineas.length === 0 && <p style={{ color: '#9ca3af', fontSize: 13, textAlign: 'center', padding: 20, margin: 0 }}>Añade la primera línea.</p>}
-          {lineas.map((l, i) => (
-            <EditorLinea key={i} linea={l} tipologias={tipologias} colores={colores} tiposTubo={tiposTubo}
-              onChange={nl => setLineas(prev => prev.map((x, j) => j === i ? nl : x))}
-              onEliminar={() => setLineas(prev => prev.filter((_, j) => j !== i).map((x, j) => ({ ...x, posicion: j })))} />
-          ))}
+          {lineas.map((l, i) => {
+            const coloresCabecera = ['#1c2230', '#1e4d8c', '#166534', '#7c2d12', '#4a1d96']
+            const color = coloresCabecera[i % coloresCabecera.length]
+            return (
+              <div key={i}>
+                {/* Cabecera de línea con número y color */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 8 }}>
+                  <div style={{ background: color, color: '#fff', fontSize: 12, fontWeight: 700, padding: '4px 14px', borderRadius: '8px 0 0 8px', letterSpacing: 0.5, whiteSpace: 'nowrap' }}>
+                    LÍNEA {i + 1}
+                  </div>
+                  <div style={{ flex: 1, height: 3, background: color, borderRadius: '0 8px 8px 0', opacity: 0.3 }} />
+                </div>
+                <EditorLinea linea={l} tipologias={tipologias} colores={colores} tiposTubo={tiposTubo}
+                  onChange={nl => setLineas(prev => prev.map((x, j) => j === i ? nl : x))}
+                  onEliminar={() => setLineas(prev => prev.filter((_, j) => j !== i).map((x, j) => ({ ...x, posicion: j })))} />
+              </div>
+            )
+          })}
         </div>
       </div>
 
