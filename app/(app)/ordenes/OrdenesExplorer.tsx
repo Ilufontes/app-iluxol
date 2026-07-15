@@ -230,7 +230,7 @@ function EditorLinea({ linea, tipologias, colores, tiposTubo, onChange, onElimin
               {lados.map((t, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid #fde68a', background: '#fffbf4' }}>
                   <td style={{ padding: '4px 8px' }}>{t.lado}</td>
-                  <td style={{ padding: '4px 8px', textAlign: 'center' }}>1</td>
+                  <td style={{ padding: '4px 8px', textAlign: 'center' }}>{linea.unidades_totales}</td>
                   <td style={{ padding: '4px 8px', textAlign: 'right', fontWeight: 700, color: '#92400e' }}>{t.medida}</td>
                 </tr>
               ))}
@@ -507,7 +507,7 @@ function VistaOrden({ orden }: { orden: OrdenTrabajo }) {
                         {tubosCalc.map((t, j) => (
                           <tr key={`t${j}`} style={{ borderTop: '1px solid #fed7aa', background: '#fffbf4' }}>
                             <td style={{ padding: '5px 10px', color: '#92400e' }}>{t.lado}</td>
-                            <td style={{ padding: '5px 10px', textAlign: 'center' }}>1</td>
+                            <td style={{ padding: '5px 10px', textAlign: 'center' }}>{linea.unidades_totales}</td>
                             <td style={{ padding: '5px 10px', textAlign: 'right', fontWeight: 700, fontSize: 14, color: '#92400e' }}>{t.medida}</td>
                           </tr>
                         ))}
