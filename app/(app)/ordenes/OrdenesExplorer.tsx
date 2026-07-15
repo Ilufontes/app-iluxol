@@ -588,11 +588,11 @@ export default function OrdenesExplorer({ ordenesIniciales, tipologias, colores,
               {o.observaciones && <span style={{ marginLeft: 10, fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>· {o.observaciones}</span>}
             </div>
             <span style={{ fontSize: 12, color: '#9ca3af' }}>{new Date(o.creado_en).toLocaleDateString('es-ES')}</span>
-            <a href={`/ordenes-imprimir/${o.id}`} target="_blank" rel="noopener noreferrer"
-              onClick={e => e.stopPropagation()}
-              style={{ ...btn('#f0fdf4', '#16a34a'), display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
+            <button
+              onClick={e => { e.stopPropagation(); window.open(`/ordenes-imprimir/${o.id}?t=${Date.now()}`, '_blank') }}
+              style={btn('#f0fdf4', '#16a34a')}>
               🖨 Imprimir
-            </a>
+            </button>
             <button onClick={e => { e.stopPropagation(); setEditando(o); setModo('editar') }} style={btn('#f3f4f6', '#374151')}>Editar</button>
             <button onClick={e => { e.stopPropagation(); onEliminar(o.id) }} disabled={eliminando === o.id} style={btn('#fee2e2', '#dc2626')}>
               {eliminando === o.id ? '…' : 'Eliminar'}
