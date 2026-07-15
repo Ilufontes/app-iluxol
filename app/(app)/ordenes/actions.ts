@@ -211,6 +211,7 @@ export async function actualizarOrden(id: number, datos: {
     }
   }
   revalidatePath('/ordenes')
+  revalidatePath('/ordenes-imprimir')
 }
 
 export async function eliminarOrden(id: number): Promise<void> {
