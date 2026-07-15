@@ -96,7 +96,7 @@ function EditorLinea({ linea, tipologias, colores, tiposTubo, onChange, onElimin
   const hayAdvertencias = medidaFaltante || colorFaltante
 
   return (
-    <div style={{ border: `1px solid ${hayAdvertencias ? '#fbbf24' : '#e2e8f0'}`, borderRadius: 10, padding: 14, background: hayAdvertencias ? '#fffbeb' : '#f8fafc' }}>
+    <div style={{ border: `1px solid ${hayAdvertencias ? '#fca5a5' : '#e2e8f0'}`, borderRadius: 10, padding: 14, background: hayAdvertencias ? '#fff5f5' : '#f8fafc' }}>
       {/* Fila superior: tipología, color, unidades, referencia */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
         <div style={{ flex: '2 1 180px' }}>
@@ -201,8 +201,8 @@ function EditorLinea({ linea, tipologias, colores, tiposTubo, onChange, onElimin
 
       {/* Advertencias de campos faltantes */}
       {hayAdvertencias && (
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', padding: '6px 10px', background: '#fef3c7', borderRadius: 7, marginBottom: 8, border: '1px solid #fbbf24' }}>
-          <span style={{ fontSize: 12, color: '#92400e', fontWeight: 500 }}>⚠️ Advertencia:</span>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', padding: '6px 10px', background: '#fee2e2', borderRadius: 7, marginBottom: 8, border: '1px solid #fca5a5' }}>
+          <span style={{ fontSize: 12, color: '#b91c1c', fontWeight: 500 }}>⚠️ Advertencia:</span>
           {colorFaltante && <span style={{ fontSize: 12, color: '#92400e' }}>Falta el color</span>}
           {medidaFaltante && <span style={{ fontSize: 12, color: '#92400e' }}>Faltan medidas</span>}
         </div>
