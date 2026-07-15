@@ -3,7 +3,6 @@ export const dynamic = 'force-dynamic'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
-import { unstable_noStore as noStore } from 'next/cache'
 
 function evalFormula(formula: string, vars: Record<string, number>): string {
   if (!formula?.trim()) return '—'
@@ -16,11 +15,10 @@ function evalFormula(formula: string, vars: Record<string, number>): string {
 }
 
 async function cargarOrden(id: number) {
-  noStore()
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   const url        = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const supabase   = serviceKey
-    ? createSupabaseClient(url, serviceKey, { auth: { persistSession: false }, global: { fetch: (u: RequestInfo | URL, o?: RequestInit) => fetch(u, { ...o, cache: 'no-store' }) } })
+    ? createSupabaseClient(url, serviceKey, { auth: { persistSession: false } })
     : await createClient()
 
   function uno(v: unknown): any { return Array.isArray(v) ? (v[0] ?? null) : v }
@@ -265,7 +263,7 @@ export default async function OrdenesImprimirPage({ params }: { params: Promise<
                               <tr key={j} style={{ background: '#fffbf4' }}>
                                 <td style={{ color: '#92400e' }}>{t.lado}</td>
                                 <td className="f">{t.lado === 'Superior' || t.lado === 'Inferior' ? `ancho+${lat}×${d}` : `alto+${hor}×${d}`}</td>
-                                <td className="c">1</td>
+                                <td className="c">{linea.unidades_totales}</td>
                                 <td className="r-tubo">{t.medida}</td>
                               </tr>
                             ))}
