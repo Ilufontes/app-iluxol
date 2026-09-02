@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import type { Tipologia, TipoTubo, FilaTipologia, FilaNueva, FilaVariableNueva, FilaPerfilNueva, FilaTubaNueva, TuboLado, VariableClave } from './actions'
+import type { Tipologia, TipoTubo, FilaTipologia, FilaNueva, FilaVariableNueva, FilaPerfilNueva, FilaTubaNueva, TuboLado, VariableClave, PerfilCatalogoOpcion } from './actions'
 import {
   crearTipologia,
   actualizarTipologia,
@@ -10,6 +10,7 @@ import {
   borrarImagenTipologia,
   cargarTiposTubo,
   actualizarTipoTuboTipologia,
+  cargarCatalogoPerfilesParaTipologias,
 } from './actions'
 
 // ─── EVALUADOR DE FÓRMULAS ────────────────────────────────────────────────────
@@ -57,9 +58,10 @@ const btn = (color: string, txt = '#fff'): React.CSSProperties => ({
 
 // ─── EDITOR DE FILAS ──────────────────────────────────────────────────────────
 
-function EditorFilas({ filas, onChange }: {
+function EditorFilas({ filas, onChange, catalogoPerfiles }: {
   filas: FilaNueva[]
   onChange: (filas: FilaNueva[]) => void
+  catalogoPerfiles: PerfilCatalogoOpcion[]
 }) {
   function añadir(tipo: 'variable' | 'perfil' | 'tubo') {
     const posicion = filas.length
@@ -70,7 +72,7 @@ function EditorFilas({ filas, onChange }: {
       const nueva: FilaTubaNueva = { tipo: 'tubo', tubo_lado: 'superior', unidades: 1, posicion }
       onChange([...filas, nueva])
     } else {
-      const nueva: FilaPerfilNueva = { tipo: 'perfil', nombre_perfil: '', formula: '', unidades: 1, posicion }
+      const nueva: FilaPerfilNueva = { tipo: 'perfil', nombre_perfil: '', formula: '', unidades: 1, posicion, catalogo_perfil_id: null }
       onChange([...filas, nueva])
     }
   }
@@ -141,6 +143,17 @@ function EditorFilas({ filas, onChange }: {
                     onChange={e => actualizar(idx, { formula: e.target.value })}
                     placeholder="Fórmula (ej: ancho_total - 25)"
                     style={{ ...inp, flex: 2, fontFamily: 'monospace' }} />
+                  <select
+                    value={f.catalogo_perfil_id ?? ''}
+                    onChange={e => actualizar(idx, { catalogo_perfil_id: e.target.value ? Number(e.target.value) : null })}
+                    title="Código de perfil (catálogo) — no se muestra en las órdenes de trabajo"
+                    style={{ ...inp, flex: 2, borderColor: f.catalogo_perfil_id ? '#d1d5db' : '#fca5a5' }}
+                  >
+                    <option value="">Código (obligatorio)…</option>
+                    {catalogoPerfiles.filter(c => c.activo).map(c => (
+                      <option key={c.id} value={c.id}>{c.referencia} — {c.descripcion}</option>
+                    ))}
+                  </select>
                   <input type="number" min={1} value={f.unidades}
                     onChange={e => actualizar(idx, { unidades: Number(e.target.value) })}
                     style={{ ...inp, width: 60, flexShrink: 0 }} title="Unidades" />
@@ -185,8 +198,10 @@ function FormularioTipologia({ inicial, onGuardada, onCancelar }: {
   const [subiendoImg, setSubiendoImg] = useState(false)
   const [tiposTubo,   setTiposTubo]   = useState<TipoTubo[]>([])
   const [tipoTuboId,  setTipoTuboId]  = useState<number | null>(inicial?.tipo_tubo_id ?? null)
+  const [catalogoPerfiles, setCatalogoPerfiles] = useState<PerfilCatalogoOpcion[]>([])
   useEffect(() => {
     cargarTiposTubo().then(setTiposTubo).catch(() => {})
+    cargarCatalogoPerfilesParaTipologias().then(setCatalogoPerfiles).catch(() => {})
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -214,6 +229,10 @@ function FormularioTipologia({ inicial, onGuardada, onCancelar }: {
 
   async function guardar() {
     if (!nombre.trim()) { setError('El nombre es obligatorio.'); return }
+    if (filas.some(f => f.tipo === 'perfil' && !(f as FilaPerfilNueva).catalogo_perfil_id)) {
+      setError('Todas las filas de tipo Perfil necesitan un código del catálogo de perfiles.')
+      return
+    }
     setGuardando(true); setError('')
     try {
       if (inicial) {
@@ -242,7 +261,7 @@ function FormularioTipologia({ inicial, onGuardada, onCancelar }: {
 
       <div>
         <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 8 }}>FILAS</label>
-        <EditorFilas filas={filas} onChange={setFilas} />
+        <EditorFilas filas={filas} onChange={setFilas} catalogoPerfiles={catalogoPerfiles} />
       </div>
 
       {filasPerfil.length > 0 && (
@@ -275,6 +294,7 @@ function FormularioTipologia({ inicial, onGuardada, onCancelar }: {
             <thead>
               <tr style={{ background: '#1c2230', color: '#fff' }}>
                 <th style={{ padding: '6px 10px', textAlign: 'left' }}>Perfil</th>
+                <th style={{ padding: '6px 10px', textAlign: 'left' }}>Código</th>
                 <th style={{ padding: '6px 10px', textAlign: 'left' }}>Fórmula</th>
                 <th style={{ padding: '6px 10px', textAlign: 'center' }}>Ud.</th>
                 <th style={{ padding: '6px 10px', textAlign: 'right' }}>Resultado</th>
@@ -284,6 +304,9 @@ function FormularioTipologia({ inicial, onGuardada, onCancelar }: {
               {filasPerfil.map((f, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid #e2e8f0' }}>
                   <td style={{ padding: '5px 10px' }}>{f.nombre_perfil || '—'}</td>
+                  <td style={{ padding: '5px 10px', color: '#6b7280' }}>
+                    {catalogoPerfiles.find(c => c.id === f.catalogo_perfil_id)?.referencia ?? '—'}
+                  </td>
                   <td style={{ padding: '5px 10px', fontFamily: 'monospace', color: '#6b7280' }}>{f.formula || '—'}</td>
                   <td style={{ padding: '5px 10px', textAlign: 'center' }}>{f.unidades}</td>
                   <td style={{ padding: '5px 10px', textAlign: 'right', fontWeight: 600 }}>
@@ -379,6 +402,10 @@ export default function TipologiasExplorer({
   const [modo,       setModo]       = useState<'lista' | 'nueva' | 'editar'>('lista')
   const [editando,   setEditando]   = useState<Tipologia | null>(null)
   const [expandida,  setExpandida]  = useState<number | null>(null)
+  const [catalogoPerfiles, setCatalogoPerfiles] = useState<PerfilCatalogoOpcion[]>([])
+  useEffect(() => {
+    cargarCatalogoPerfilesParaTipologias().then(setCatalogoPerfiles).catch(() => {})
+  }, [])
 
   function onGuardada(t: Tipologia) {
     setTipologias(prev => {
@@ -472,6 +499,7 @@ export default function TipologiasExplorer({
                       <tr style={{ background: '#f8fafc' }}>
                         <th style={{ padding: '5px 10px', textAlign: 'left', color: '#6b7280', fontWeight: 500 }}>Tipo</th>
                         <th style={{ padding: '5px 10px', textAlign: 'left', color: '#6b7280', fontWeight: 500 }}>Perfil / Variable</th>
+                        <th style={{ padding: '5px 10px', textAlign: 'left', color: '#6b7280', fontWeight: 500 }}>Código</th>
                         <th style={{ padding: '5px 10px', textAlign: 'left', color: '#6b7280', fontWeight: 500 }}>Fórmula</th>
                         <th style={{ padding: '5px 10px', textAlign: 'center', color: '#6b7280', fontWeight: 500 }}>Ud.</th>
                       </tr>
@@ -494,6 +522,9 @@ export default function TipologiasExplorer({
                               : f.tipo === 'tubo'
                               ? `Tubo ${(f as any).tubo_lado}`
                               : (f as any).nombre_perfil}
+                          </td>
+                          <td style={{ padding: '5px 10px', color: '#6b7280' }}>
+                            {f.tipo === 'perfil' ? (catalogoPerfiles.find(c => c.id === (f as any).catalogo_perfil_id)?.referencia ?? '—') : '—'}
                           </td>
                           <td style={{ padding: '5px 10px', fontFamily: 'monospace', color: '#6b7280' }}>
                             {f.tipo === 'perfil' ? (f as any).formula : f.tipo === 'tubo' ? 'auto' : '—'}
