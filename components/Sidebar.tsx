@@ -13,7 +13,8 @@ export default function Sidebar({ nombreEmpleado }: { nombreEmpleado: string }) 
   const router   = useRouter()
   const supabase = createClient()
 
-  const enOrdenes = pathname.startsWith('/ordenes') || pathname.startsWith('/tipologias')
+  const enOrdenes = pathname.startsWith('/ordenes') || pathname.startsWith('/tipologias') ||
+    pathname.startsWith('/catalogo-perfiles') || pathname.startsWith('/inventario-mosquiteros')
   const enAjustesOrdenes = pathname === '/ordenes/ajustes'
   const [submenuAbierto, setSubmenuAbierto] = useState(enOrdenes)
 
@@ -106,6 +107,14 @@ export default function Sidebar({ nombreEmpleado }: { nombreEmpleado: string }) 
               <Link href="/tipologias" style={subEnlaceStyle(pathname === '/tipologias')}>
                 <span style={{ width: 5, height: 5, borderRadius: '50%', flexShrink: 0, background: COLOR_ORDENES, opacity: 0.7 }} />
                 Tipologías
+              </Link>
+              <Link href="/catalogo-perfiles" style={subEnlaceStyle(pathname === '/catalogo-perfiles')}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', flexShrink: 0, background: COLOR_ORDENES, opacity: 0.7 }} />
+                Perfiles
+              </Link>
+              <Link href="/inventario-mosquiteros" style={subEnlaceStyle(pathname === '/inventario-mosquiteros')}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', flexShrink: 0, background: COLOR_ORDENES, opacity: 0.7 }} />
+                Inventario Mosquiteros
               </Link>
               <Link href="/ordenes/ajustes" style={subEnlaceStyle(enAjustesOrdenes)}>
                 <span style={{ width: 5, height: 5, borderRadius: '50%', flexShrink: 0, background: COLOR_ORDENES, opacity: 0.7 }} />
