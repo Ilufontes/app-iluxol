@@ -53,6 +53,7 @@ export type OrdenTrabajo = {
   cliente_telefono: string | null
   observaciones: string | null
   creado_en: string
+  material_generado: boolean
   orden_lineas: LineaOrden[]
 }
 
@@ -134,7 +135,7 @@ export async function cargarOrdenes(): Promise<OrdenTrabajo[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('ordenes_trabajo')
-    .select(`id, numero_orden, nota_id, cliente_id, notas, creado_en, clientes ( nombre, telefono ), orden_lineas (${SELECT_LINEAS})`)
+    .select(`id, numero_orden, nota_id, cliente_id, notas, creado_en, material_generado, clientes ( nombre, telefono ), orden_lineas (${SELECT_LINEAS})`)
     .order('numero_orden', { ascending: false })
   if (error) { console.error('[cargarOrdenes]', error.message); return [] }
   return (data ?? []).map((o: any) => {
@@ -144,6 +145,7 @@ export async function cargarOrdenes(): Promise<OrdenTrabajo[]> {
       cliente_id: o.cliente_id, cliente_nombre: cliente?.nombre ?? null,
       cliente_telefono: cliente?.telefono ?? null,
       observaciones: o.notas, creado_en: o.creado_en,
+      material_generado: o.material_generado ?? false,
       orden_lineas: normalizarLineas(o.orden_lineas ?? []),
     }
   })
