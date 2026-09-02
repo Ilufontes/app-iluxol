@@ -12,6 +12,7 @@ export type FilaVariable = {
 }
 export type FilaPerfil = {
   id?: number; tipo: 'perfil'; nombre_perfil: string; formula: string; unidades: number; posicion: number
+  catalogo_perfil_id: number | null
 }
 export type FilaTubo = {
   id?: number; tipo: 'tubo'; tubo_lado: TuboLado; unidades: number; posicion: number
@@ -40,7 +41,7 @@ export async function cargarTipologias(): Promise<Tipologia[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('tipologias')
-    .select('id, nombre, notas, activo, imagen_url, tipo_tubo_id, tipos_tubo ( id, nombre, descuento, activo ), tipologia_filas ( id, tipo, variable_clave, nombre_perfil, formula, unidades, posicion, tubo_lado, tubo_unidades )')
+    .select('id, nombre, notas, activo, imagen_url, tipo_tubo_id, tipos_tubo ( id, nombre, descuento, activo ), tipologia_filas ( id, tipo, variable_clave, nombre_perfil, formula, unidades, posicion, tubo_lado, tubo_unidades, catalogo_perfil_id )')
     .order('nombre')
   if (error) throw new Error('No se pudieron cargar las tipologías.')
   function unoT(v: any) { return Array.isArray(v) ? (v[0] ?? null) : v }
@@ -63,6 +64,9 @@ export async function crearTipologia(datos: {
     .select('id, nombre, notas, activo, imagen_url')
     .single()
   if (error || !tipologia) throw new Error('No se pudo crear la tipología.')
+  if (datos.filas.some(f => f.tipo === 'perfil' && !f.catalogo_perfil_id)) {
+    throw new Error('Todos los perfiles necesitan un código del catálogo de perfiles.')
+  }
   if (datos.filas.length > 0) {
     await supabase.from('tipologia_filas').insert(datos.filas.map((f, i) => ({
       tipologia_id: tipologia.id, posicion: i, tipo: f.tipo,
@@ -72,6 +76,7 @@ export async function crearTipologia(datos: {
       unidades:       f.tipo === 'perfil' ? f.unidades : null,
       tubo_lado:      f.tipo === 'tubo' ? f.tubo_lado : null,
       tubo_unidades:  f.tipo === 'tubo' ? f.unidades : null,
+      catalogo_perfil_id: f.tipo === 'perfil' ? f.catalogo_perfil_id : null,
     })))
   }
   revalidatePath('/tipologias')
@@ -86,6 +91,9 @@ export async function actualizarTipologia(
   await supabase.from('tipologias').update({
     nombre: datos.nombre.trim(), notas: datos.notas?.trim() || null,
   }).eq('id', id)
+  if (datos.filas.some(f => f.tipo === 'perfil' && !f.catalogo_perfil_id)) {
+    throw new Error('Todos los perfiles necesitan un código del catálogo de perfiles.')
+  }
   await supabase.from('tipologia_filas').delete().eq('tipologia_id', id)
   if (datos.filas.length > 0) {
     await supabase.from('tipologia_filas').insert(datos.filas.map((f, i) => ({
@@ -96,6 +104,7 @@ export async function actualizarTipologia(
       unidades:       f.tipo === 'perfil' ? f.unidades : null,
       tubo_lado:      f.tipo === 'tubo' ? f.tubo_lado : null,
       tubo_unidades:  f.tipo === 'tubo' ? f.unidades : null,
+      catalogo_perfil_id: f.tipo === 'perfil' ? f.catalogo_perfil_id : null,
     })))
   }
   revalidatePath('/tipologias')
@@ -156,6 +165,16 @@ export async function toggleActivoColor(id: number, activo: boolean) {
   const supabase = await createClient()
   await supabase.from('colores').update({ activo }).eq('id', id)
   revalidatePath('/tipologias')
+}
+
+// ─── CATÁLOGO DE PERFILES (código) ─────────────────────────────────────────────
+
+export type PerfilCatalogoOpcion = { id: number; referencia: string; descripcion: string; activo: boolean }
+
+export async function cargarCatalogoPerfilesParaTipologias(): Promise<PerfilCatalogoOpcion[]> {
+  const supabase = await createClient()
+  const { data } = await supabase.from('catalogo_perfiles').select('id, referencia, descripcion, activo').order('referencia')
+  return data ?? []
 }
 
 export async function cargarTiposTubo(): Promise<TipoTubo[]> {
