@@ -7,6 +7,7 @@ const PESTAÑAS = [
   { tabla: 'asignados' as const, etiqueta: 'Asignada', placeholder: 'Ej: DANIEL' },
   { tabla: 'llevar_opciones' as const, etiqueta: 'Llevar', placeholder: 'Ej: MATERIAL' },
   { tabla: 'municipios' as const, etiqueta: 'Municipios', placeholder: 'Ej: SANTA BRIGIDA' },
+  { tabla: 'estantes' as const, etiqueta: 'Estantes', placeholder: 'Ej: ESTANTE 3' },
 ]
 
 export default async function AjustesPage({
