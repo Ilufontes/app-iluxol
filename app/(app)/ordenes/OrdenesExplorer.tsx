@@ -6,6 +6,8 @@ import {
   crearOrden, actualizarOrden, eliminarOrden,
   buscarNotaParaOrden, buscarClientesParaOrden,
 } from './actions'
+import type { LineaInformeMaterial } from '@/lib/optimizacionPerfiles'
+import { generarInformeMaterial, deshacerInformeMaterial, cargarInformeMaterial } from '@/lib/optimizacionPerfiles'
 
 // ─── EVALUADOR ────────────────────────────────────────────────────────────────
 
@@ -359,7 +361,7 @@ function FormularioOrden({ inicial, tipologias, colores, tiposTubo, onGuardada, 
         onGuardada({ ...inicial, nota_id: notaId, numero_nota_rel: notaInfo?.numero_nota ?? null, cliente_id: cliId, cliente_nombre: cliInfo?.nombre ?? null, cliente_telefono: cliInfo?.telefono ?? null, observaciones: obs, orden_lineas: lineas as any })
       } else {
         const nueva = await crearOrden(datos)
-        onGuardada({ id: nueva.id, numero_orden: null, nota_id: notaId, numero_nota_rel: notaInfo?.numero_nota ?? null, cliente_id: cliId, cliente_nombre: cliInfo?.nombre ?? null, cliente_telefono: cliInfo?.telefono ?? null, observaciones: obs, creado_en: new Date().toISOString(), orden_lineas: lineas as any })
+        onGuardada({ id: nueva.id, numero_orden: null, nota_id: notaId, numero_nota_rel: notaInfo?.numero_nota ?? null, cliente_id: cliId, cliente_nombre: cliInfo?.nombre ?? null, cliente_telefono: cliInfo?.telefono ?? null, observaciones: obs, creado_en: new Date().toISOString(), material_generado: false, orden_lineas: lineas as any })
       }
     } catch (e: any) { setErr(e.message ?? 'Error.') } finally { setGuardando(false) }
   }
@@ -464,7 +466,41 @@ function FormularioOrden({ inicial, tipologias, colores, tiposTubo, onGuardada, 
 
 // ─── VISTA EXPANDIDA ─────────────────────────────────────────────────────────
 
-function VistaOrden({ orden }: { orden: OrdenTrabajo }) {
+function InformeMaterial({ informe }: { informe: LineaInformeMaterial[] }) {
+  return (
+    <div style={{ border: '1px solid #bbf7d0', background: '#f0fdf4', borderRadius: 10, overflow: 'hidden', marginBottom: 16 }}>
+      <div style={{ padding: '8px 14px', background: '#166534', color: '#fff', fontSize: 13, fontWeight: 700 }}>
+        📦 Perfiles a utilizar
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead>
+          <tr style={{ background: '#dcfce7' }}>
+            <th style={{ padding: '5px 10px', textAlign: 'left', color: '#166534' }}>Código</th>
+            <th style={{ padding: '5px 10px', textAlign: 'left', color: '#166534' }}>Ref.</th>
+            <th style={{ padding: '5px 10px', textAlign: 'right', color: '#166534' }}>Medida</th>
+            <th style={{ padding: '5px 10px', textAlign: 'left', color: '#166534' }}>Estantería</th>
+            <th style={{ padding: '5px 10px', textAlign: 'left', color: '#166534' }}>Color</th>
+          </tr>
+        </thead>
+        <tbody>
+          {informe.map((l, i) => (
+            <tr key={i} style={{ borderTop: '1px solid #bbf7d0', background: l.encontrado ? (i % 2 ? '#f7fef9' : '#fff') : '#fee2e2' }}>
+              <td style={{ padding: '5px 10px', fontWeight: 700 }}>{l.codigo_pieza ?? '—'}</td>
+              <td style={{ padding: '5px 10px' }}>{l.referencia}</td>
+              <td style={{ padding: '5px 10px', textAlign: 'right', fontWeight: 600 }}>{l.medida_necesaria}</td>
+              <td style={{ padding: '5px 10px' }}>{l.estante_nombre ?? '—'}</td>
+              <td style={{ padding: '5px 10px' }}>
+                {l.encontrado ? (l.color_nombre ?? '—') : <strong style={{ color: '#b91c1c' }}>SIN STOCK — pedir material</strong>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function VistaOrden({ orden, informe }: { orden: OrdenTrabajo; informe?: LineaInformeMaterial[] }) {
   return (
     <div>
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 14, fontSize: 13 }}>
@@ -472,6 +508,7 @@ function VistaOrden({ orden }: { orden: OrdenTrabajo }) {
         {orden.nota_id && <span><strong>Nota:</strong> #{orden.numero_nota_rel ?? orden.nota_id}</span>}
         {orden.observaciones && <span style={{ color: '#6b7280', fontStyle: 'italic' }}>{orden.observaciones}</span>}
       </div>
+      {informe && informe.length > 0 && <InformeMaterial informe={informe} />}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {orden.orden_lineas.map((linea, i) => {
           const tip = linea.tipologia
@@ -550,6 +587,10 @@ export default function OrdenesExplorer({ ordenesIniciales, tipologias, colores,
   const [editando,   setEditando]   = useState<OrdenTrabajo | null>(null)
   const [expandida,  setExpandida]  = useState<number | null>(null)
   const [eliminando, setEliminando] = useState<number | null>(null)
+  const [informes, setInformes]     = useState<Record<number, LineaInformeMaterial[]>>({})
+  const [generando, setGenerando]   = useState<number | null>(null)
+  const [deshaciendo, setDeshaciendo] = useState<number | null>(null)
+  const [errorMaterial, setErrorMaterial] = useState<Record<number, string>>({})
 
   function onGuardada(o: OrdenTrabajo) {
     setOrdenes(prev => { const e = prev.find(x => x.id === o.id); return e ? prev.map(x => x.id === o.id ? o : x) : [o, ...prev] })
@@ -560,6 +601,43 @@ export default function OrdenesExplorer({ ordenesIniciales, tipologias, colores,
     if (!confirm('¿Eliminar esta orden?')) return
     setEliminando(id); await eliminarOrden(id)
     setOrdenes(prev => prev.filter(o => o.id !== id)); setEliminando(null)
+  }
+
+  async function expandir(o: OrdenTrabajo) {
+    const abrir = expandida !== o.id
+    setExpandida(abrir ? o.id : null)
+    if (abrir && o.material_generado && !informes[o.id]) {
+      const informe = await cargarInformeMaterial(o.id)
+      setInformes(prev => ({ ...prev, [o.id]: informe }))
+    }
+  }
+
+  async function onGenerarMaterial(o: OrdenTrabajo) {
+    setGenerando(o.id); setErrorMaterial(prev => ({ ...prev, [o.id]: '' }))
+    try {
+      const informe = await generarInformeMaterial(o.id)
+      setInformes(prev => ({ ...prev, [o.id]: informe }))
+      setOrdenes(prev => prev.map(x => x.id === o.id ? { ...x, material_generado: true } : x))
+      setExpandida(o.id)
+    } catch (e: any) {
+      setErrorMaterial(prev => ({ ...prev, [o.id]: e.message ?? 'No se pudo generar el material.' }))
+    } finally {
+      setGenerando(null)
+    }
+  }
+
+  async function onDeshacerMaterial(o: OrdenTrabajo) {
+    if (!confirm('¿Deshacer el material generado? Se restaurará el stock consumido por esta orden.')) return
+    setDeshaciendo(o.id); setErrorMaterial(prev => ({ ...prev, [o.id]: '' }))
+    try {
+      await deshacerInformeMaterial(o.id)
+      setOrdenes(prev => prev.map(x => x.id === o.id ? { ...x, material_generado: false } : x))
+      setInformes(prev => { const c = { ...prev }; delete c[o.id]; return c })
+    } catch (e: any) {
+      setErrorMaterial(prev => ({ ...prev, [o.id]: e.message ?? 'No se pudo deshacer.' }))
+    } finally {
+      setDeshaciendo(null)
+    }
   }
 
   if (modo === 'nueva' || modo === 'editar') {
@@ -591,16 +669,30 @@ export default function OrdenesExplorer({ ordenesIniciales, tipologias, colores,
 
       {ordenes.map(o => (
         <div key={o.id} style={card}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', cursor: 'pointer' }}
-            onClick={() => setExpandida(expandida === o.id ? null : o.id)}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', cursor: 'pointer', flexWrap: 'wrap' }}
+            onClick={() => expandir(o)}>
             <span style={{ fontSize: 13, color: '#9ca3af' }}>{expandida === o.id ? '▾' : '▸'}</span>
             <div style={{ flex: 1 }}>
               <span style={{ fontWeight: 600, fontSize: 15, color: '#1c2230' }}>Orden #{o.numero_orden ?? o.id}</span>
               {o.cliente_nombre && <span style={{ marginLeft: 10, fontSize: 13, color: '#6b7280' }}>{o.cliente_nombre}</span>}
               <span style={{ marginLeft: 10, fontSize: 12, color: '#9ca3af' }}>{o.orden_lineas.length} {o.orden_lineas.length === 1 ? 'línea' : 'líneas'}</span>
               {o.observaciones && <span style={{ marginLeft: 10, fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>· {o.observaciones}</span>}
+              {o.material_generado && (
+                <span style={{ marginLeft: 10, fontSize: 11, background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: 6, fontWeight: 600 }}>
+                  MATERIAL GENERADO
+                </span>
+              )}
             </div>
             <span style={{ fontSize: 12, color: '#9ca3af' }}>{new Date(o.creado_en).toLocaleDateString('es-ES')}</span>
+            {o.material_generado ? (
+              <button onClick={e => { e.stopPropagation(); onDeshacerMaterial(o) }} disabled={deshaciendo === o.id} style={btn('#fef3c7', '#92400e')}>
+                {deshaciendo === o.id ? '…' : '↩ Deshacer material'}
+              </button>
+            ) : (
+              <button onClick={e => { e.stopPropagation(); onGenerarMaterial(o) }} disabled={generando === o.id} style={btn('#dcfce7', '#166534')}>
+                {generando === o.id ? 'Calculando…' : '📦 Generar material'}
+              </button>
+            )}
             <a href={`/ordenes-imprimir/${o.id}`} target="_blank" rel="noopener noreferrer"
               onClick={e => e.stopPropagation()}
               style={{ ...btn('#f0fdf4', '#16a34a'), display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
@@ -611,7 +703,14 @@ export default function OrdenesExplorer({ ordenesIniciales, tipologias, colores,
               {eliminando === o.id ? '…' : 'Eliminar'}
             </button>
           </div>
-          {expandida === o.id && <div style={{ borderTop: '1px solid #f3f4f6', padding: '12px 16px' }}><VistaOrden orden={o} /></div>}
+          {errorMaterial[o.id] && (
+            <p style={{ margin: 0, padding: '0 16px 10px', fontSize: 12, color: '#dc2626' }}>{errorMaterial[o.id]}</p>
+          )}
+          {expandida === o.id && (
+            <div style={{ borderTop: '1px solid #f3f4f6', padding: '12px 16px' }}>
+              <VistaOrden orden={o} informe={informes[o.id]} />
+            </div>
+          )}
         </div>
       ))}
     </div>
