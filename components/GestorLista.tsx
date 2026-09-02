@@ -27,7 +27,7 @@ export default function GestorLista({
   placeholder,
   itemsIniciales,
 }: {
-  tabla: 'tipo_notas' | 'asignados' | 'llevar_opciones' | 'municipios'
+  tabla: 'tipo_notas' | 'asignados' | 'llevar_opciones' | 'municipios' | 'estantes'
   placeholder: string
   itemsIniciales: ItemLista[]
 }) {
