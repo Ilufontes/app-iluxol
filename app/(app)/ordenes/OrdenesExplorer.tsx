@@ -678,8 +678,15 @@ export default function OrdenesExplorer({ ordenesIniciales, tipologias, colores,
 
   async function onEliminar(id: number) {
     if (!confirm('¿Eliminar esta orden?')) return
-    setEliminando(id); await eliminarOrden(id)
-    setOrdenes(prev => prev.filter(o => o.id !== id)); setEliminando(null)
+    setEliminando(id); setErrorMaterial(prev => ({ ...prev, [id]: '' }))
+    try {
+      await eliminarOrden(id)
+      setOrdenes(prev => prev.filter(o => o.id !== id))
+    } catch (e: any) {
+      setErrorMaterial(prev => ({ ...prev, [id]: e.message ?? 'No se pudo eliminar.' }))
+    } finally {
+      setEliminando(null)
+    }
   }
 
   async function expandir(o: OrdenTrabajo) {
@@ -797,8 +804,12 @@ export default function OrdenesExplorer({ ordenesIniciales, tipologias, colores,
               style={{ ...btn('#f0fdf4', '#16a34a'), display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
               🖨 Imprimir
             </a>
-            <button onClick={e => { e.stopPropagation(); setEditando(o); setModo('editar') }} style={btn('#f3f4f6', '#374151')}>Editar</button>
-            <button onClick={e => { e.stopPropagation(); onEliminar(o.id) }} disabled={eliminando === o.id} style={btn('#fee2e2', '#dc2626')}>
+            <button onClick={e => { e.stopPropagation(); setEditando(o); setModo('editar') }} disabled={o.material_generado}
+              title={o.material_generado ? 'Pulsa «Deshacer material» antes de editar' : undefined}
+              style={{ ...btn('#f3f4f6', '#374151'), opacity: o.material_generado ? 0.45 : 1, cursor: o.material_generado ? 'not-allowed' : 'pointer' }}>Editar</button>
+            <button onClick={e => { e.stopPropagation(); onEliminar(o.id) }} disabled={eliminando === o.id || o.material_generado}
+              title={o.material_generado ? 'Pulsa «Deshacer material» antes de eliminar' : undefined}
+              style={{ ...btn('#fee2e2', '#dc2626'), opacity: o.material_generado ? 0.45 : 1, cursor: o.material_generado ? 'not-allowed' : 'pointer' }}>
               {eliminando === o.id ? '…' : 'Eliminar'}
             </button>
           </div>
