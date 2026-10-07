@@ -17,6 +17,7 @@ export type BarraPlan = {
 }
 
 export type FaltantePlan = {
+  es_tubo: boolean               // true → «mirar en otro almacén»; false → «pedir material»
   referencia: string
   descripcion: string
   color_nombre: string | null
@@ -38,6 +39,7 @@ export type ResumenPlan = {
 }
 
 export type PlanMaterial = {
+  avisos: string[]               // problemas de configuración (p. ej. tubo sin referencia); no frenan la orden
   aplicado: boolean              // false = vista previa, true = ya descontado del stock
   barras: BarraPlan[]
   faltantes: FaltantePlan[]
@@ -46,6 +48,7 @@ export type PlanMaterial = {
 
 // Una fila de plan, venga de la simulación (vista previa) o del registro guardado.
 export type FilaPlan = {
+  es_tubo: boolean
   encontrado: boolean
   codigo_pieza: string | null
   catalogo_perfil_id: number
@@ -63,7 +66,7 @@ export type Mapas = {
   estantes: Map<number, string>
 }
 
-export function construirPlan(filas: FilaPlan[], mapas: Mapas, aplicado: boolean): PlanMaterial {
+export function construirPlan(filas: FilaPlan[], mapas: Mapas, aplicado: boolean, avisos: string[] = []): PlanMaterial {
   const textoColor = (id: number | null) => (id ? mapas.colores.get(id) ?? null : null)
   const textoEstante = (id: number | null) => (id ? mapas.estantes.get(id) ?? null : null)
   const info = (id: number) => mapas.catalogo.get(id) ?? { referencia: '—', descripcion: '—' }
@@ -77,9 +80,9 @@ export function construirPlan(filas: FilaPlan[], mapas: Mapas, aplicado: boolean
 
     if (!f.encontrado || f.codigo_pieza === null || f.medida_anterior === null) {
       sinMaterial++
-      const k = `${f.catalogo_perfil_id}|${f.color_id ?? 'null'}`
+      const k = `${f.catalogo_perfil_id}|${f.color_id ?? 'null'}|${f.es_tubo ? 'tubo' : 'perfil'}`
       if (!faltantes.has(k)) {
-        faltantes.set(k, { referencia: cat.referencia, descripcion: cat.descripcion, color_nombre: textoColor(f.color_id), cortes: [], total_mm: 0 })
+        faltantes.set(k, { es_tubo: f.es_tubo, referencia: cat.referencia, descripcion: cat.descripcion, color_nombre: textoColor(f.color_id), cortes: [], total_mm: 0 })
       }
       const fl = faltantes.get(k)!
       fl.cortes.push(f.medida_necesaria)
@@ -118,6 +121,7 @@ export function construirPlan(filas: FilaPlan[], mapas: Mapas, aplicado: boolean
   const despunteTotal = enteras * DESPUNTE_BARRA_ENTERA
 
   return {
+    avisos,
     aplicado,
     barras: lista,
     faltantes: Array.from(faltantes.values()),

@@ -18,6 +18,7 @@ export type NecesidadPlan = {
   catalogo_perfil_id: number
   color_id: number | null
   medida_necesaria: number
+  es_tubo?: boolean   // corte de tubo (si falta stock se dice «mirar en otro almacén»)
 }
 
 export type PiezaStockPlan = {

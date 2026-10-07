@@ -10,6 +10,7 @@ import {
   borrarImagenTipologia,
   cargarTiposTubo,
   actualizarTipoTuboTipologia,
+  actualizarTuboReferenciaTipologia,
   cargarCatalogoPerfilesParaTipologias,
 } from './actions'
 
@@ -198,6 +199,7 @@ function FormularioTipologia({ inicial, onGuardada, onCancelar }: {
   const [subiendoImg, setSubiendoImg] = useState(false)
   const [tiposTubo,   setTiposTubo]   = useState<TipoTubo[]>([])
   const [tipoTuboId,  setTipoTuboId]  = useState<number | null>(inicial?.tipo_tubo_id ?? null)
+  const [tuboRefId,   setTuboRefId]   = useState<number | null>(inicial?.tubo_catalogo_perfil_id ?? null)
   const [catalogoPerfiles, setCatalogoPerfiles] = useState<PerfilCatalogoOpcion[]>([])
   useEffect(() => {
     cargarTiposTubo().then(setTiposTubo).catch(() => {})
@@ -342,6 +344,43 @@ function FormularioTipologia({ inicial, onGuardada, onCancelar }: {
         {!inicial?.id && tipoTuboId === null && (
           <p style={{ fontSize: 11, color: '#9ca3af', margin: '4px 0 0' }}>Guarda primero la tipología para asignar tipo de tubo.</p>
         )}
+
+        {tipoTuboId !== null && (() => {
+          const tipo = tiposTubo.find(t => t.id === tipoTuboId)
+          const porDefecto = catalogoPerfiles.find(c => c.id === tipo?.catalogo_perfil_id)
+          return (
+            <div style={{ marginTop: 10 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 4 }}>REFERENCIA DEL TUBO (opcional)</label>
+              <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 6px' }}>
+                Es la referencia del catálogo que se descuenta del inventario. Déjala en «la del tipo de tubo» salvo que esta tipología
+                deba usar otra (por ejemplo, otro proveedor).
+              </p>
+              <select
+                value={tuboRefId ?? ''}
+                disabled={!inicial?.id}
+                onChange={async e => {
+                  const val = e.target.value ? Number(e.target.value) : null
+                  setTuboRefId(val)
+                  if (inicial?.id) await actualizarTuboReferenciaTipologia(inicial.id, val)
+                }}
+                style={inp}
+              >
+                <option value="">
+                  {porDefecto ? `La del tipo de tubo (${porDefecto.referencia} — ${porDefecto.descripcion})` : 'La del tipo de tubo (sin referencia asignada en Ajustes)'}
+                </option>
+                {catalogoPerfiles.filter(c => c.activo || c.id === tuboRefId).map(c => (
+                  <option key={c.id} value={c.id}>{c.referencia} — {c.descripcion}</option>
+                ))}
+              </select>
+              {!inicial?.id && <p style={{ fontSize: 11, color: '#9ca3af', margin: '4px 0 0' }}>Guarda primero la tipología para elegir otra referencia.</p>}
+              {!porDefecto && !tuboRefId && (
+                <p style={{ fontSize: 11, color: '#b45309', margin: '4px 0 0' }}>
+                  ⚠ Este tipo de tubo no tiene referencia: asígnala en Ajustes de órdenes → Tipos de tubo, o elige una aquí.
+                </p>
+              )}
+            </div>
+          )
+        })()}
       </div>
 
       {/* IMAGEN */}

@@ -24,7 +24,7 @@ export type FilaPerfilNueva   = Omit<FilaPerfil, 'id'>
 export type FilaTubaNueva     = Omit<FilaTubo, 'id'>
 export type FilaNueva         = FilaVariableNueva | FilaPerfilNueva | FilaTubaNueva
 
-export type TipoTubo = { id: number; nombre: string; descuento: number; activo: boolean }
+export type TipoTubo = { id: number; nombre: string; descuento: number; activo: boolean; catalogo_perfil_id?: number | null }
 
 export type Tipologia = {
   id: number
@@ -34,6 +34,7 @@ export type Tipologia = {
   imagen_url: string | null
   tipo_tubo_id: number | null
   tipo_tubo: TipoTubo | null
+  tubo_catalogo_perfil_id: number | null   // referencia propia del tubo de esta tipología (opcional)
   tipologia_filas: FilaTipologia[]
 }
 
@@ -41,7 +42,7 @@ export async function cargarTipologias(): Promise<Tipologia[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('tipologias')
-    .select('id, nombre, notas, activo, imagen_url, tipo_tubo_id, tipos_tubo ( id, nombre, descuento, activo ), tipologia_filas ( id, tipo, variable_clave, nombre_perfil, formula, unidades, posicion, tubo_lado, tubo_unidades, catalogo_perfil_id )')
+    .select('id, nombre, notas, activo, imagen_url, tipo_tubo_id, tubo_catalogo_perfil_id, tipos_tubo ( id, nombre, descuento, activo, catalogo_perfil_id ), tipologia_filas ( id, tipo, variable_clave, nombre_perfil, formula, unidades, posicion, tubo_lado, tubo_unidades, catalogo_perfil_id )')
     .order('nombre')
   if (error) throw new Error('No se pudieron cargar las tipologías.')
   function unoT(v: any) { return Array.isArray(v) ? (v[0] ?? null) : v }
@@ -49,6 +50,7 @@ export async function cargarTipologias(): Promise<Tipologia[]> {
     ...t,
     imagen_url:   (t as any).imagen_url   ?? null,
     tipo_tubo_id: (t as any).tipo_tubo_id ?? null,
+    tubo_catalogo_perfil_id: (t as any).tubo_catalogo_perfil_id ?? null,
     tipo_tubo:    unoT((t as any).tipos_tubo),
     tipologia_filas: [...((t as any).tipologia_filas as FilaTipologia[])].sort((a, b) => a.posicion - b.posicion),
   }))
@@ -57,6 +59,9 @@ export async function cargarTipologias(): Promise<Tipologia[]> {
 export async function crearTipologia(datos: {
   nombre: string; notas?: string; filas: FilaNueva[]
 }): Promise<Tipologia> {
+  if (datos.filas.some(f => f.tipo === 'perfil' && !f.catalogo_perfil_id)) {
+    throw new Error('Todos los perfiles necesitan un código del catálogo de perfiles.')
+  }
   const supabase = await createClient()
   const { data: tipologia, error } = await supabase
     .from('tipologias')
@@ -64,11 +69,8 @@ export async function crearTipologia(datos: {
     .select('id, nombre, notas, activo, imagen_url')
     .single()
   if (error || !tipologia) throw new Error('No se pudo crear la tipología.')
-  if (datos.filas.some(f => f.tipo === 'perfil' && !f.catalogo_perfil_id)) {
-    throw new Error('Todos los perfiles necesitan un código del catálogo de perfiles.')
-  }
   if (datos.filas.length > 0) {
-    await supabase.from('tipologia_filas').insert(datos.filas.map((f, i) => ({
+    const { error: errFilas } = await supabase.from('tipologia_filas').insert(datos.filas.map((f, i) => ({
       tipologia_id: tipologia.id, posicion: i, tipo: f.tipo,
       variable_clave: f.tipo === 'variable' ? f.variable_clave : null,
       nombre_perfil:  f.tipo === 'perfil' ? f.nombre_perfil : null,
@@ -78,6 +80,7 @@ export async function crearTipologia(datos: {
       tubo_unidades:  f.tipo === 'tubo' ? f.unidades : null,
       catalogo_perfil_id: f.tipo === 'perfil' ? f.catalogo_perfil_id : null,
     })))
+    if (errFilas) throw new Error('La tipología se creó pero no se pudieron guardar sus filas. Ábrela y guárdala de nuevo.')
   }
   revalidatePath('/tipologias')
   return { ...(tipologia as any), imagen_url: null, tipologia_filas: datos.filas as FilaTipologia[] }
@@ -87,16 +90,17 @@ export async function actualizarTipologia(
   id: number,
   datos: { nombre: string; notas?: string; filas: FilaNueva[] }
 ): Promise<void> {
+  if (datos.filas.some(f => f.tipo === 'perfil' && !f.catalogo_perfil_id)) {
+    throw new Error('Todos los perfiles necesitan un código del catálogo de perfiles.')
+  }
   const supabase = await createClient()
   await supabase.from('tipologias').update({
     nombre: datos.nombre.trim(), notas: datos.notas?.trim() || null,
   }).eq('id', id)
-  if (datos.filas.some(f => f.tipo === 'perfil' && !f.catalogo_perfil_id)) {
-    throw new Error('Todos los perfiles necesitan un código del catálogo de perfiles.')
-  }
-  await supabase.from('tipologia_filas').delete().eq('tipologia_id', id)
+  const { error: errBorrado } = await supabase.from('tipologia_filas').delete().eq('tipologia_id', id)
+  if (errBorrado) throw new Error('No se pudieron reemplazar las filas de la tipología. No se ha cambiado nada.')
   if (datos.filas.length > 0) {
-    await supabase.from('tipologia_filas').insert(datos.filas.map((f, i) => ({
+    const { error: errFilas } = await supabase.from('tipologia_filas').insert(datos.filas.map((f, i) => ({
       tipologia_id: id, posicion: i, tipo: f.tipo,
       variable_clave: f.tipo === 'variable' ? f.variable_clave : null,
       nombre_perfil:  f.tipo === 'perfil' ? f.nombre_perfil : null,
@@ -106,6 +110,7 @@ export async function actualizarTipologia(
       tubo_unidades:  f.tipo === 'tubo' ? f.unidades : null,
       catalogo_perfil_id: f.tipo === 'perfil' ? f.catalogo_perfil_id : null,
     })))
+    if (errFilas) throw new Error('Se borraron las filas antiguas pero no se pudieron guardar las nuevas. Pulsa Guardar de nuevo.')
   }
   revalidatePath('/tipologias')
 }
@@ -179,8 +184,15 @@ export async function cargarCatalogoPerfilesParaTipologias(): Promise<PerfilCata
 
 export async function cargarTiposTubo(): Promise<TipoTubo[]> {
   const supabase = await createClient()
-  const { data } = await supabase.from('tipos_tubo').select('id, nombre, descuento, activo').order('nombre')
+  const { data } = await supabase.from('tipos_tubo').select('id, nombre, descuento, activo, catalogo_perfil_id').order('nombre')
   return (data ?? []) as TipoTubo[]
+}
+
+export async function actualizarTuboReferenciaTipologia(tipologiaId: number, catalogoPerfilId: number | null): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase.from('tipologias').update({ tubo_catalogo_perfil_id: catalogoPerfilId }).eq('id', tipologiaId)
+  if (error) throw new Error('No se pudo guardar la referencia del tubo.')
+  revalidatePath('/tipologias')
 }
 
 export async function actualizarTipoTuboTipologia(tipologiaId: number, tipoTuboId: number | null): Promise<void> {

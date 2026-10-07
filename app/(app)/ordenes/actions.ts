@@ -10,7 +10,7 @@ export type FilaPerfil     = { id?: number; tipo: 'perfil'; nombre_perfil: strin
 export type FilaTubo       = { id?: number; tipo: 'tubo'; tubo_lado: TuboLado; unidades: number; posicion: number }
 export type FilaTipologia  = FilaVariable | FilaPerfil | FilaTubo
 
-export type TipoTubo = { id: number; nombre: string; descuento: number; activo: boolean }
+export type TipoTubo = { id: number; nombre: string; descuento: number; activo: boolean; catalogo_perfil_id?: number | null }
 
 export type Tipologia = {
   id: number; nombre: string; activo: boolean
@@ -257,8 +257,17 @@ export async function buscarClientesParaOrden(termino: string) {
 
 export async function cargarTiposTubo(): Promise<TipoTubo[]> {
   const supabase = await createClient()
-  const { data } = await supabase.from('tipos_tubo').select('id, nombre, descuento, activo').order('nombre')
+  const { data } = await supabase.from('tipos_tubo').select('id, nombre, descuento, activo, catalogo_perfil_id').order('nombre')
   return (data ?? []) as TipoTubo[]
+}
+
+// Referencia del catálogo que usa por defecto este tipo de tubo (null = ninguna)
+export async function actualizarReferenciaTipoTubo(id: number, catalogoPerfilId: number | null): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase.from('tipos_tubo').update({ catalogo_perfil_id: catalogoPerfilId }).eq('id', id)
+  if (error) throw new Error('No se pudo guardar la referencia del tubo.')
+  revalidatePath('/ordenes/ajustes')
+  revalidatePath('/ordenes')
 }
 
 export async function crearTipoTubo(nombre: string, descuento: number): Promise<void> {

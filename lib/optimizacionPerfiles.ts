@@ -43,29 +43,40 @@ async function cargarMapas(supabase: Cliente): Promise<Mapas> {
 
 // ─── 1. DEMANDA DE UNA ORDEN ──────────────────────────────────────────────────
 
-async function calcularNecesidades(supabase: Cliente, ordenId: number): Promise<NecesidadPlan[]> {
+async function calcularNecesidades(supabase: Cliente, ordenId: number): Promise<{ necesidades: NecesidadPlan[]; avisos: string[] }> {
   const { data, error } = await supabase
     .from('orden_lineas')
     .select(`
-      id, color_id,
+      id, color_id, referencia,
       ancho_total, alto_total, alto_izquierda, alto_derecha, unidades_totales,
-      tipologias ( tipologia_filas ( id, tipo, formula, unidades, catalogo_perfil_id ) )
+      tubo_superior, tubo_inferior, tubo_izquierda, tubo_derecha, tipo_tubo_id,
+      tipologias ( nombre, tipo_tubo_id, tubo_catalogo_perfil_id, tipologia_filas ( id, tipo, formula, unidades, catalogo_perfil_id ) )
     `)
     .eq('orden_id', ordenId)
   if (error) throw new Error('No se pudieron cargar las líneas de la orden.')
 
+  const { data: tiposData } = await supabase.from('tipos_tubo').select('id, nombre, descuento, catalogo_perfil_id')
+  const tipos = new Map<number, { nombre: string; descuento: number; catalogo_perfil_id: number | null }>(
+    (tiposData ?? []).map((t: any) => [t.id, { nombre: t.nombre, descuento: t.descuento ?? 0, catalogo_perfil_id: t.catalogo_perfil_id ?? null }]),
+  )
+
   const necesidades: NecesidadPlan[] = []
+  const avisos: string[] = []
   for (const linea of (data ?? []) as any[]) {
     const tip = Array.isArray(linea.tipologias) ? linea.tipologias[0] : linea.tipologias
+    const etiqueta = linea.referencia?.trim() || tip?.nombre || `línea ${linea.id}`
+    const unidadesLinea = linea.unidades_totales ?? 1
     const filas = (tip?.tipologia_filas ?? []).filter((f: any) => f.tipo === 'perfil' && f.catalogo_perfil_id)
     const vars: Record<string, number> = {
       ancho_total: linea.ancho_total ?? 0, alto_total: linea.alto_total ?? 0,
       alto_izquierda: linea.alto_izquierda ?? 0, alto_derecha: linea.alto_derecha ?? 0,
     }
+
+    // — Perfiles de la tipología —
     for (const fila of filas) {
       const medida = evalFormula(fila.formula, vars)
       if (medida === null || medida <= 0) continue
-      const total = (fila.unidades ?? 1) * (linea.unidades_totales ?? 1)
+      const total = (fila.unidades ?? 1) * unidadesLinea
       for (let i = 0; i < total; i++) {
         necesidades.push({
           orden_linea_id: linea.id,
@@ -76,8 +87,55 @@ async function calcularNecesidades(supabase: Cliente, ordenId: number): Promise<
         })
       }
     }
+
+    // — Tubos marcados en la línea (mismo cálculo que la pantalla y la hoja impresa) —
+    const lados = {
+      superior: !!linea.tubo_superior, inferior: !!linea.tubo_inferior,
+      izquierda: !!linea.tubo_izquierda, derecha: !!linea.tubo_derecha,
+    }
+    if (!lados.superior && !lados.inferior && !lados.izquierda && !lados.derecha) continue
+
+    const tipoId: number | null = linea.tipo_tubo_id ?? tip?.tipo_tubo_id ?? null
+    const tipo = tipoId ? tipos.get(tipoId) : undefined
+    if (!tipo) {
+      avisos.push(`Línea «${etiqueta}»: tiene tubos marcados pero no tiene tipo de tubo; no se ha podido calcular su material.`)
+      continue
+    }
+    // La tipología puede imponer su propia referencia solo para SU tipo de tubo por defecto.
+    const refPropia = tipoId === tip?.tipo_tubo_id ? (tip?.tubo_catalogo_perfil_id ?? null) : null
+    const referencia = refPropia ?? tipo.catalogo_perfil_id
+    if (!referencia) {
+      avisos.push(`Tubo ${tipo.nombre} (línea «${etiqueta}») sin referencia: asígnala en Ajustes de órdenes → Tipos de tubo, o en la tipología.`)
+      continue
+    }
+
+    const d = tipo.descuento
+    const ancho  = linea.ancho_total || 0
+    const altIzq = linea.alto_izquierda || linea.alto_total || 0
+    const altDer = linea.alto_derecha   || linea.alto_total || 0
+    const laterales    = (lados.izquierda ? 1 : 0) + (lados.derecha ? 1 : 0)
+    const horizontales = (lados.superior ? 1 : 0) + (lados.inferior ? 1 : 0)
+    const medidas: number[] = []
+    if (lados.superior)  medidas.push(ancho  + laterales    * d)
+    if (lados.inferior)  medidas.push(ancho  + laterales    * d)
+    if (lados.izquierda) medidas.push(altIzq + horizontales * d)
+    if (lados.derecha)   medidas.push(altDer + horizontales * d)
+
+    for (const medida of medidas) {
+      if (medida <= 0) continue
+      for (let i = 0; i < unidadesLinea; i++) {
+        necesidades.push({
+          orden_linea_id: linea.id,
+          tipologia_fila_id: 0, // no viene de una fila de la tipología (se guarda como null)
+          catalogo_perfil_id: referencia,
+          color_id: linea.color_id ?? null,
+          medida_necesaria: medida,
+          es_tubo: true,
+        })
+      }
+    }
   }
-  return necesidades
+  return { necesidades, avisos }
 }
 
 // El stock se carga de una vez (por páginas, porque Supabase limita a 1000 filas)
@@ -100,15 +158,16 @@ async function cargarStock(supabase: Cliente, perfilIds: number[]): Promise<Piez
 }
 
 async function calcularPlan(supabase: Cliente, ordenId: number) {
-  const necesidades = await calcularNecesidades(supabase, ordenId)
+  const { necesidades, avisos } = await calcularNecesidades(supabase, ordenId)
   const ids = Array.from(new Set(necesidades.map(n => n.catalogo_perfil_id)))
   const stock = await cargarStock(supabase, ids)
   const resultado = planificarCortes(necesidades, stock)
-  return { necesidades, resultado }
+  return { necesidades, resultado, avisos }
 }
 
 function filasDesdeAsignaciones(asignaciones: AsignacionPlan[]): FilaPlan[] {
   return asignaciones.map(a => ({
+    es_tubo: !!a.necesidad.es_tubo,
     encontrado: a.encontrado,
     codigo_pieza: a.pieza?.codigo ?? null,
     catalogo_perfil_id: a.necesidad.catalogo_perfil_id,
@@ -129,9 +188,9 @@ export async function previsualizarMaterial(ordenId: number): Promise<PlanMateri
   if (!orden) throw new Error('Orden no encontrada.')
   if (orden.material_generado) throw new Error('El material de esta orden ya se generó. Deshazlo antes de volver a calcularlo.')
 
-  const { resultado } = await calcularPlan(supabase, ordenId)
+  const { resultado, avisos } = await calcularPlan(supabase, ordenId)
   const mapas = await cargarMapas(supabase)
-  return construirPlan(filasDesdeAsignaciones(resultado.asignaciones), mapas, false)
+  return construirPlan(filasDesdeAsignaciones(resultado.asignaciones), mapas, false, avisos)
 }
 
 // ─── 4. CONFIRMAR: recalcula con el stock de ahora y descuenta ────────────────
@@ -167,7 +226,7 @@ export async function generarInformeMaterial(ordenId: number): Promise<PlanMater
   }
 
   try {
-    const { resultado } = await calcularPlan(supabase, ordenId)
+    const { resultado, avisos } = await calcularPlan(supabase, ordenId)
     const asig = resultado.asignaciones
 
     // Estado final de cada pieza tocada = el de su último corte.
@@ -189,9 +248,9 @@ export async function generarInformeMaterial(ordenId: number): Promise<PlanMater
 
     const agotadasIds = new Set(Array.from(finalPorPieza.values()).filter(a => a.agotada).map(a => a.pieza!.id))
     const filasLog = asig.map(a => ({
-      orden_id: ordenId, orden_linea_id: a.necesidad.orden_linea_id, tipologia_fila_id: a.necesidad.tipologia_fila_id,
+      orden_id: ordenId, orden_linea_id: a.necesidad.orden_linea_id, tipologia_fila_id: a.necesidad.tipologia_fila_id || null,
       catalogo_perfil_id: a.necesidad.catalogo_perfil_id, color_id: a.necesidad.color_id,
-      medida_necesaria: a.necesidad.medida_necesaria,
+      medida_necesaria: a.necesidad.medida_necesaria, es_tubo: !!a.necesidad.es_tubo,
       // Si la pieza se borra al final, su id dejaría de existir: se guarda null (se localiza por código).
       stock_perfil_id: a.pieza && !agotadasIds.has(a.pieza.id) ? a.pieza.id : null,
       codigo_pieza: a.pieza?.codigo ?? null, estante_id: a.pieza?.estante_id ?? null,
@@ -206,7 +265,7 @@ export async function generarInformeMaterial(ordenId: number): Promise<PlanMater
     const mapas = await cargarMapas(supabase)
     revalidatePath('/ordenes')
     revalidatePath('/inventario-mosquiteros')
-    return construirPlan(filasDesdeAsignaciones(asig), mapas, true)
+    return construirPlan(filasDesdeAsignaciones(asig), mapas, true, avisos)
   } catch (e) {
     await deshacerStock()
     await liberar()
@@ -220,13 +279,14 @@ export async function cargarInformeMaterial(ordenId: number): Promise<PlanMateri
   const supabase = await createClient()
   const { data } = await supabase
     .from('orden_perfiles_uso')
-    .select('encontrado, codigo_pieza, catalogo_perfil_id, color_id, estante_id, medida_necesaria, medida_anterior, medida_nueva, pieza_agotada')
+    .select('es_tubo, encontrado, codigo_pieza, catalogo_perfil_id, color_id, estante_id, medida_necesaria, medida_anterior, medida_nueva, pieza_agotada')
     .eq('orden_id', ordenId)
     .eq('revertido', false)
     .order('id', { ascending: true })
   if (!data || data.length === 0) return null
 
   const filas: FilaPlan[] = data.map((f: any) => ({
+    es_tubo: !!f.es_tubo,
     encontrado: f.encontrado, codigo_pieza: f.codigo_pieza, catalogo_perfil_id: f.catalogo_perfil_id,
     color_id: f.color_id, estante_id: f.estante_id, medida_necesaria: f.medida_necesaria,
     medida_anterior: f.medida_anterior, medida_nueva: f.medida_nueva, agotada: f.pieza_agotada,

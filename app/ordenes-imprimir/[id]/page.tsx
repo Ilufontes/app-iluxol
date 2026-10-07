@@ -67,7 +67,7 @@ async function cargarOrden(id: number) {
   if ((o as any).material_generado) {
     const [{ data: usos }, { data: cat }, { data: col }, { data: est }] = await Promise.all([
       supabase.from('orden_perfiles_uso')
-        .select('encontrado, codigo_pieza, catalogo_perfil_id, color_id, estante_id, medida_necesaria, medida_anterior, medida_nueva, pieza_agotada')
+        .select('es_tubo, encontrado, codigo_pieza, catalogo_perfil_id, color_id, estante_id, medida_necesaria, medida_anterior, medida_nueva, pieza_agotada')
         .eq('orden_id', id).eq('revertido', false).order('id', { ascending: true }),
       supabase.from('catalogo_perfiles').select('id, referencia, descripcion'),
       supabase.from('colores').select('id, nombre'),
@@ -76,6 +76,7 @@ async function cargarOrden(id: number) {
     if (usos && usos.length > 0) {
       material = construirPlan(
         usos.map((f: any) => ({
+          es_tubo: !!f.es_tubo,
           encontrado: f.encontrado, codigo_pieza: f.codigo_pieza, catalogo_perfil_id: f.catalogo_perfil_id,
           color_id: f.color_id, estante_id: f.estante_id, medida_necesaria: f.medida_necesaria,
           medida_anterior: f.medida_anterior, medida_nueva: f.medida_nueva, agotada: f.pieza_agotada,
@@ -246,10 +247,16 @@ export default async function OrdenesImprimirPage({ params }: { params: Promise<
                 </tbody>
               </table>
             )}
-            {orden.material.faltantes.length > 0 && (
+            {orden.material.faltantes.filter(f => !f.es_tubo).length > 0 && (
               <div className="mat-falta">
-                <strong>SIN MATERIAL:</strong>{' '}
-                {orden.material.faltantes.map(f => `${f.referencia}${f.color_nombre ? ' ' + f.color_nombre : ''}: ${f.cortes.join(', ')} mm`).join(' · ')}
+                <strong>SIN MATERIAL (pedir):</strong>{' '}
+                {orden.material.faltantes.filter(f => !f.es_tubo).map(f => `${f.referencia}${f.color_nombre ? ' ' + f.color_nombre : ''}: ${f.cortes.join(', ')} mm`).join(' · ')}
+              </div>
+            )}
+            {orden.material.faltantes.filter(f => f.es_tubo).length > 0 && (
+              <div className="mat-falta" style={{ background: '#fff7ed', color: '#9a3412', borderTopColor: '#fed7aa' }}>
+                <strong>TUBO SIN STOCK (mirar en otro almacén):</strong>{' '}
+                {orden.material.faltantes.filter(f => f.es_tubo).map(f => `${f.referencia}${f.color_nombre ? ' ' + f.color_nombre : ''}: ${f.cortes.join(', ')} mm`).join(' · ')}
               </div>
             )}
           </div>

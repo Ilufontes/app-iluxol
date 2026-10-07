@@ -496,6 +496,15 @@ function PanelMaterial({ plan, previa, confirmando, onConfirmar, onCancelar }: {
         )}
       </div>
 
+      {plan.avisos.length > 0 && (
+        <div style={{ background: '#fef3c7', borderBottom: '1px solid #fde68a', padding: '8px 14px', fontSize: 12, color: '#92400e' }}>
+          <strong>Revisa la configuración (estos cortes no se han podido calcular):</strong>
+          <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+            {plan.avisos.map((a, i) => <li key={i}>{a}</li>)}
+          </ul>
+        </div>
+      )}
+
       {r.total_cortes === 0 ? (
         <p style={{ margin: 0, padding: 14, fontSize: 13, color: '#6b7280' }}>
           Esta orden no tiene perfiles con código de catálogo que calcular (revisa la tipología y las medidas de las líneas).
@@ -552,20 +561,28 @@ function PanelMaterial({ plan, previa, confirmando, onConfirmar, onCancelar }: {
         </>
       )}
 
-      {plan.faltantes.length > 0 && (
-        <div style={{ borderTop: `1px solid ${colorBorde}`, background: '#fee2e2', padding: '10px 14px', fontSize: 13, color: '#991b1b' }}>
-          <strong>Sin material para {r.cortes_sin_material} {r.cortes_sin_material === 1 ? 'corte' : 'cortes'}</strong>
-          {' '}— la orden sigue adelante marcada sin material; hay que pedirlo:
-          <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
-            {plan.faltantes.map((f, i) => (
-              <li key={i}>
-                <strong>{f.referencia}</strong> {f.descripcion !== '—' ? `(${f.descripcion})` : ''}{f.color_nombre ? ` · ${f.color_nombre}` : ''}:
-                {' '}{f.cortes.join(', ')} mm <span style={{ opacity: 0.8 }}>(≈ {num(f.total_mm)} mm de perfil contando la sierra)</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {(['perfil', 'tubo'] as const).map(tipo => {
+        const lista = plan.faltantes.filter(f => f.es_tubo === (tipo === 'tubo'))
+        if (lista.length === 0) return null
+        const cuantos = lista.reduce((n, f) => n + f.cortes.length, 0)
+        const esTubo = tipo === 'tubo'
+        return (
+          <div key={tipo} style={{ borderTop: `1px solid ${colorBorde}`, background: esTubo ? '#fff7ed' : '#fee2e2', padding: '10px 14px', fontSize: 13, color: esTubo ? '#9a3412' : '#991b1b' }}>
+            <strong>{esTubo ? `Tubo sin stock aquí (${cuantos} ${cuantos === 1 ? 'corte' : 'cortes'})` : `Sin material para ${cuantos} ${cuantos === 1 ? 'corte' : 'cortes'}`}</strong>
+            {' '}— {esTubo
+              ? 'la orden sigue adelante: hay que mirarlo en otro almacén:'
+              : 'la orden sigue adelante marcada sin material; hay que pedirlo:'}
+            <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+              {lista.map((f, i) => (
+                <li key={i}>
+                  <strong>{f.referencia}</strong> {f.descripcion !== '—' ? `(${f.descripcion})` : ''}{f.color_nombre ? ` · ${f.color_nombre}` : ''}:
+                  {' '}{f.cortes.join(', ')} mm {!esTubo && <span style={{ opacity: 0.8 }}>(≈ {num(f.total_mm)} mm de perfil contando la sierra)</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      })}
     </div>
   )
 }
