@@ -1,7 +1,8 @@
 'use client'
 import { useState } from 'react'
 import type { TipoTubo, Color } from '../actions'
-import { crearColor, toggleActivoColor, crearTipoTubo, toggleActivoTipoTubo } from '../actions'
+import { crearColor, toggleActivoColor, crearTipoTubo, toggleActivoTipoTubo, cargarTiposTubo, actualizarReferenciaTipoTubo } from '../actions'
+import type { PerfilCatalogo } from '../../catalogo-perfiles/actions'
 
 const inp: React.CSSProperties = {
   padding: '6px 10px', borderRadius: 7, border: '1px solid #d1d5db',
@@ -70,7 +71,7 @@ function PanelColores({ init }: { init: Color[] }) {
 
 // ─── TIPOS DE TUBO ────────────────────────────────────────────────────────────
 
-function PanelTiposTubo({ init }: { init: TipoTubo[] }) {
+function PanelTiposTubo({ init, catalogo }: { init: TipoTubo[]; catalogo: PerfilCatalogo[] }) {
   const [tubos,     setTubos]     = useState(init)
   const [nombre,    setNombre]    = useState('')
   const [descuento, setDescuento] = useState('')
@@ -80,7 +81,7 @@ function PanelTiposTubo({ init }: { init: TipoTubo[] }) {
     if (!nombre.trim() || !descuento) return; setError('')
     try {
       await crearTipoTubo(nombre, Number(descuento))
-      setTubos(p => [...p, { id: Date.now(), nombre: nombre.trim().toUpperCase(), descuento: Number(descuento), activo: true }])
+      setTubos(await cargarTiposTubo()) // recarga con los ids reales
       setNombre(''); setDescuento('')
     } catch (e: any) { setError(e.message) }
   }
@@ -90,12 +91,22 @@ function PanelTiposTubo({ init }: { init: TipoTubo[] }) {
     setTubos(p => p.map(t => t.id === id ? { ...t, activo } : t))
   }
 
+  async function cambiarReferencia(id: number, valor: string) {
+    const catalogoId = valor ? Number(valor) : null
+    setError('')
+    try {
+      await actualizarReferenciaTipoTubo(id, catalogoId)
+      setTubos(p => p.map(t => t.id === id ? { ...t, catalogo_perfil_id: catalogoId } : t))
+    } catch (e: any) { setError(e.message) }
+  }
+
   return (
     <div style={card}>
       <h3 style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 600, color: '#1c2230' }}>Tipos de tubo</h3>
       <p style={{ margin: '0 0 14px', fontSize: 12, color: '#6b7280' }}>
         El <strong>descuento</strong> es el mm que se suma al tubo perpendicular por cada tubo activo en ese lado.
-        Ejemplo: tubo 60x20 → descuento 20.
+        Ejemplo: tubo 60x20 → descuento 20. La <strong>referencia</strong> es la del catálogo de perfiles que se descuenta del
+        inventario al calcular el material; cada tipología puede cambiarla por otra (otro proveedor).
       </p>
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
         <input value={nombre} onChange={e => setNombre(e.target.value)}
@@ -120,6 +131,14 @@ function PanelTiposTubo({ init }: { init: TipoTubo[] }) {
               {t.nombre}
             </span>
             <span style={{ fontSize: 12, color: '#6b7280' }}>Descuento: <strong>{t.descuento} mm</strong></span>
+            <select value={t.catalogo_perfil_id ?? ''} onChange={e => cambiarReferencia(t.id, e.target.value)}
+              title="Referencia del catálogo para este tubo"
+              style={{ ...inp, width: 260, borderColor: t.catalogo_perfil_id ? '#d1d5db' : '#fca5a5' }}>
+              <option value="">Sin referencia (no se descuenta stock)</option>
+              {catalogo.filter(c => c.activo || c.id === t.catalogo_perfil_id).map(c => (
+                <option key={c.id} value={c.id}>{c.referencia} — {c.descripcion}</option>
+              ))}
+            </select>
             <button onClick={() => toggle(t.id, !t.activo)}
               style={btn(t.activo ? '#fee2e2' : '#f0fdf4', t.activo ? '#dc2626' : '#16a34a')}>
               {t.activo ? 'Desactivar' : 'Activar'}
@@ -133,14 +152,15 @@ function PanelTiposTubo({ init }: { init: TipoTubo[] }) {
 
 // ─── PRINCIPAL ────────────────────────────────────────────────────────────────
 
-export default function AjustesOrdenesExplorer({ coloresIniciales, tiposTuboIniciales }: {
+export default function AjustesOrdenesExplorer({ coloresIniciales, tiposTuboIniciales, catalogo }: {
   coloresIniciales: Color[]
   tiposTuboIniciales: TipoTubo[]
+  catalogo: PerfilCatalogo[]
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <PanelColores init={coloresIniciales} />
-      <PanelTiposTubo init={tiposTuboIniciales} />
+      <PanelTiposTubo init={tiposTuboIniciales} catalogo={catalogo} />
     </div>
   )
 }

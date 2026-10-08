@@ -10,7 +10,7 @@ export type FilaPerfil     = { id?: number; tipo: 'perfil'; nombre_perfil: strin
 export type FilaTubo       = { id?: number; tipo: 'tubo'; tubo_lado: TuboLado; unidades: number; posicion: number }
 export type FilaTipologia  = FilaVariable | FilaPerfil | FilaTubo
 
-export type TipoTubo = { id: number; nombre: string; descuento: number; activo: boolean }
+export type TipoTubo = { id: number; nombre: string; descuento: number; activo: boolean; catalogo_perfil_id?: number | null }
 
 export type Tipologia = {
   id: number; nombre: string; activo: boolean
@@ -183,11 +183,21 @@ export async function crearOrden(datos: {
   return orden
 }
 
+// Una orden con el material ya descontado del inventario no se puede editar ni
+// eliminar: primero hay que pulsar «Deshacer material» para devolver las piezas.
+async function exigirSinMaterial(supabase: Awaited<ReturnType<typeof createClient>>, id: number, accion: 'editar' | 'eliminar') {
+  const { data } = await supabase.from('ordenes_trabajo').select('material_generado').eq('id', id).maybeSingle()
+  if (data?.material_generado) {
+    throw new Error(`Esta orden tiene el material descontado del inventario. Pulsa «Deshacer material» antes de ${accion}la.`)
+  }
+}
+
 export async function actualizarOrden(id: number, datos: {
   nota_id: number | null; cliente_id: number | null
   observaciones: string; lineas: DatosLinea[]
 }): Promise<void> {
   const supabase = await createClient()
+  await exigirSinMaterial(supabase, id, 'editar')
   await supabase.from('ordenes_trabajo').update({
     nota_id: datos.nota_id, cliente_id: datos.cliente_id,
     notas: datos.observaciones.trim() || null,
@@ -218,6 +228,7 @@ export async function actualizarOrden(id: number, datos: {
 
 export async function eliminarOrden(id: number): Promise<void> {
   const supabase = await createClient()
+  await exigirSinMaterial(supabase, id, 'eliminar')
   await supabase.from('orden_lineas').delete().eq('orden_id', id)
   await supabase.from('ordenes_trabajo').delete().eq('id', id)
   revalidatePath('/ordenes')
@@ -246,8 +257,17 @@ export async function buscarClientesParaOrden(termino: string) {
 
 export async function cargarTiposTubo(): Promise<TipoTubo[]> {
   const supabase = await createClient()
-  const { data } = await supabase.from('tipos_tubo').select('id, nombre, descuento, activo').order('nombre')
+  const { data } = await supabase.from('tipos_tubo').select('id, nombre, descuento, activo, catalogo_perfil_id').order('nombre')
   return (data ?? []) as TipoTubo[]
+}
+
+// Referencia del catálogo que usa por defecto este tipo de tubo (null = ninguna)
+export async function actualizarReferenciaTipoTubo(id: number, catalogoPerfilId: number | null): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase.from('tipos_tubo').update({ catalogo_perfil_id: catalogoPerfilId }).eq('id', id)
+  if (error) throw new Error('No se pudo guardar la referencia del tubo.')
+  revalidatePath('/ordenes/ajustes')
+  revalidatePath('/ordenes')
 }
 
 export async function crearTipoTubo(nombre: string, descuento: number): Promise<void> {

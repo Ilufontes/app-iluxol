@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import { unstable_noStore as noStore } from 'next/cache'
+import { construirPlan, type PlanMaterial } from '@/lib/informeMaterial'
 
 function evalFormula(formula: string, vars: Record<string, number>): string {
   if (!formula?.trim()) return '—'
@@ -28,7 +29,7 @@ async function cargarOrden(id: number) {
   const { data: o, error } = await supabase
     .from('ordenes_trabajo')
     .select(`
-      id, numero_orden, nota_id, cliente_id, notas, creado_en,
+      id, numero_orden, nota_id, cliente_id, notas, creado_en, material_generado,
       clientes ( nombre, telefono ),
       orden_lineas (
         id, tipologia_id, color_id,
@@ -60,6 +61,35 @@ async function cargarOrden(id: number) {
   const { data: ttData } = await supabase.from('tipos_tubo').select('id, nombre, descuento')
   const ttMap: Record<number, { id: number; nombre: string; descuento: number }> =
     Object.fromEntries((ttData ?? []).map((t: any) => [t.id, t]))
+
+  // Material a recoger (solo si ya se calculó y se confirmó en la orden)
+  let material: PlanMaterial | null = null
+  if ((o as any).material_generado) {
+    const [{ data: usos }, { data: cat }, { data: col }, { data: est }] = await Promise.all([
+      supabase.from('orden_perfiles_uso')
+        .select('es_tubo, encontrado, codigo_pieza, catalogo_perfil_id, color_id, estante_id, medida_necesaria, medida_anterior, medida_nueva, pieza_agotada')
+        .eq('orden_id', id).eq('revertido', false).order('id', { ascending: true }),
+      supabase.from('catalogo_perfiles').select('id, referencia, descripcion'),
+      supabase.from('colores').select('id, nombre'),
+      supabase.from('estantes').select('id, nombre'),
+    ])
+    if (usos && usos.length > 0) {
+      material = construirPlan(
+        usos.map((f: any) => ({
+          es_tubo: !!f.es_tubo,
+          encontrado: f.encontrado, codigo_pieza: f.codigo_pieza, catalogo_perfil_id: f.catalogo_perfil_id,
+          color_id: f.color_id, estante_id: f.estante_id, medida_necesaria: f.medida_necesaria,
+          medida_anterior: f.medida_anterior, medida_nueva: f.medida_nueva, agotada: f.pieza_agotada,
+        })),
+        {
+          catalogo: new Map((cat ?? []).map((c: any) => [c.id, { referencia: c.referencia, descripcion: c.descripcion }])),
+          colores:  new Map((col ?? []).map((c: any) => [c.id, c.nombre])),
+          estantes: new Map((est ?? []).map((e: any) => [e.id, e.nombre])),
+        },
+        true,
+      )
+    }
+  }
 
   const lineasRaw = Array.isArray((o as any).orden_lineas) ? (o as any).orden_lineas : []
   const lineas = [...lineasRaw]
@@ -100,6 +130,7 @@ async function cargarOrden(id: number) {
     cliente_telefono: cliente?.telefono ?? null,
     observaciones:    (o as any).notas  ?? null,
     creado_en:        (o as any).creado_en,
+    material,
     lineas,
   }
 }
@@ -142,6 +173,9 @@ export default async function OrdenesImprimirPage({ params }: { params: Promise<
         table.cortes .c { text-align: center; }
         table.cortes .r { text-align: right; font-weight: 700; font-size: 14px; color: #1c2230; }
         table.cortes .r-tubo { text-align: right; font-weight: 700; font-size: 14px; color: #92400e; }
+        .mat-cab { background: #166534; color: #fff; padding: 8px 14px; font-size: 13px; font-weight: 700; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; border-radius: 7px 7px 0 0; }
+        table.cortes .mat-b { font-weight: 700; }
+        .mat-falta { padding: 8px 14px; background: #fee2e2; color: #991b1b; font-size: 12px; border-top: 1px solid #fecaca; }
         .tubo-sep td { background: #fff8ed; font-size: 11px; font-weight: 600; color: #92400e; padding: 3px 10px; }
         @media print {
           body { background: #fff; }
@@ -179,6 +213,55 @@ export default async function OrdenesImprimirPage({ params }: { params: Promise<
         {orden.observaciones && (
           <div style={{ margin: '0 0 12px', padding: '8px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, fontSize: 13, color: '#92400e' }}>
             <strong>Observaciones:</strong> {orden.observaciones}
+          </div>
+        )}
+
+        {orden.material && (
+          <div className="bloque">
+            <div className="mat-cab">
+              <span>MATERIAL A RECOGER</span>
+              <span style={{ fontWeight: 400 }}>
+                Aprovechamiento {orden.material.resumen.aprovechamiento_pct.toLocaleString('es-ES')} % · {orden.material.resumen.barras_usadas} {orden.material.resumen.barras_usadas === 1 ? 'pieza' : 'piezas'}
+              </span>
+            </div>
+            {orden.material.barras.length > 0 && (
+              <table className="cortes">
+                <thead>
+                  <tr>
+                    <th style={{ width: '1%', whiteSpace: 'nowrap' }}>Estantería</th><th style={{ width: '1%', whiteSpace: 'nowrap' }}>Código</th><th>Perfil</th><th>Color</th>
+                    <th style={{ textAlign: 'right' }}>Medida</th><th>Cortes a sacar</th><th>Queda</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orden.material.barras.map((b, i) => (
+                    <tr key={`${b.codigo}-${i}`}>
+                      <td className="mat-b" style={{ whiteSpace: 'nowrap' }}>{b.estante_nombre ?? '—'}</td>
+                      <td className="mat-b" style={{ whiteSpace: 'nowrap' }}>{b.codigo}</td>
+                      <td className="mat-b" style={{ minWidth: 200 }}>
+                        {b.descripcion && b.descripcion !== '—' ? b.descripcion : b.referencia}
+                        {b.descripcion && b.descripcion !== '—' && <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: 10.5, marginLeft: 6 }}>{b.referencia}</span>}
+                      </td>
+                      <td>{b.color_nombre ?? '—'}</td>
+                      <td style={{ textAlign: 'right' }}>{b.medida_inicial.toLocaleString('es-ES')}{b.barra_entera ? ' (entera)' : ''}</td>
+                      <td className="mat-b">{b.cortes.join(' + ')}</td>
+                      <td>{b.medida_final !== null ? `${b.medida_final.toLocaleString('es-ES')} mm` : 'Se agota'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {orden.material.faltantes.filter(f => !f.es_tubo).length > 0 && (
+              <div className="mat-falta">
+                <strong>SIN MATERIAL (pedir):</strong>{' '}
+                {orden.material.faltantes.filter(f => !f.es_tubo).map(f => `${f.descripcion && f.descripcion !== '—' ? f.descripcion : f.referencia}${f.color_nombre ? ' ' + f.color_nombre : ''}: ${f.cortes.join(', ')} mm`).join(' · ')}
+              </div>
+            )}
+            {orden.material.faltantes.filter(f => f.es_tubo).length > 0 && (
+              <div className="mat-falta" style={{ background: '#fff7ed', color: '#9a3412', borderTopColor: '#fed7aa' }}>
+                <strong>TUBO SIN STOCK (mirar en otro almacén):</strong>{' '}
+                {orden.material.faltantes.filter(f => f.es_tubo).map(f => `${f.descripcion && f.descripcion !== '—' ? f.descripcion : f.referencia}${f.color_nombre ? ' ' + f.color_nombre : ''}: ${f.cortes.join(', ')} mm`).join(' · ')}
+              </div>
+            )}
           </div>
         )}
 

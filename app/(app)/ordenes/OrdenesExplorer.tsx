@@ -6,8 +6,8 @@ import {
   crearOrden, actualizarOrden, eliminarOrden,
   buscarNotaParaOrden, buscarClientesParaOrden,
 } from './actions'
-import type { LineaInformeMaterial } from '@/lib/optimizacionPerfiles'
-import { generarInformeMaterial, deshacerInformeMaterial, cargarInformeMaterial } from '@/lib/optimizacionPerfiles'
+import type { PlanMaterial } from '@/lib/optimizacionPerfiles'
+import { previsualizarMaterial, generarInformeMaterial, deshacerInformeMaterial, cargarInformeMaterial } from '@/lib/optimizacionPerfiles'
 
 // ─── EVALUADOR ────────────────────────────────────────────────────────────────
 
@@ -466,41 +466,138 @@ function FormularioOrden({ inicial, tipologias, colores, tiposTubo, onGuardada, 
 
 // ─── VISTA EXPANDIDA ─────────────────────────────────────────────────────────
 
-function InformeMaterial({ informe }: { informe: LineaInformeMaterial[] }) {
+function PanelMaterial({ plan, previa, confirmando, onConfirmar, onCancelar }: {
+  plan: PlanMaterial
+  previa: boolean
+  confirmando?: boolean
+  onConfirmar?: () => void
+  onCancelar?: () => void
+}) {
+  const r = plan.resumen
+  const num = (n: number) => n.toLocaleString('es-ES')
+  const th: React.CSSProperties = { padding: '5px 10px', textAlign: 'left', color: '#166534', fontSize: 12 }
+  const colorBorde = previa ? '#fde68a' : '#bbf7d0'
+  const colorFondo = previa ? '#fffbeb' : '#f0fdf4'
+
   return (
-    <div style={{ border: '1px solid #bbf7d0', background: '#f0fdf4', borderRadius: 10, overflow: 'hidden', marginBottom: 16 }}>
-      <div style={{ padding: '8px 14px', background: '#166534', color: '#fff', fontSize: 13, fontWeight: 700 }}>
-        📦 Perfiles a utilizar
+    <div style={{ border: `1px solid ${colorBorde}`, background: colorFondo, borderRadius: 10, overflow: 'hidden', marginBottom: 16 }}>
+      <div style={{ padding: '8px 14px', background: previa ? '#92400e' : '#166534', color: '#fff', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <span style={{ flex: 1 }}>
+          {previa ? '👁 Vista previa — todavía no se ha descontado nada del inventario' : '📦 Perfiles a utilizar'}
+        </span>
+        {previa && (
+          <>
+            <button onClick={onCancelar} disabled={confirmando} style={{ ...btn('#fff', '#374151'), padding: '4px 12px' }}>Cancelar</button>
+            <button onClick={onConfirmar} disabled={confirmando || r.barras_usadas === 0}
+              style={{ ...btn('#16a34a'), padding: '4px 12px', opacity: r.barras_usadas === 0 ? 0.5 : 1 }}>
+              {confirmando ? 'Descontando…' : '✓ Confirmar y descontar stock'}
+            </button>
+          </>
+        )}
       </div>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <thead>
-          <tr style={{ background: '#dcfce7' }}>
-            <th style={{ padding: '5px 10px', textAlign: 'left', color: '#166534' }}>Código</th>
-            <th style={{ padding: '5px 10px', textAlign: 'left', color: '#166534' }}>Ref.</th>
-            <th style={{ padding: '5px 10px', textAlign: 'right', color: '#166534' }}>Medida</th>
-            <th style={{ padding: '5px 10px', textAlign: 'left', color: '#166534' }}>Estantería</th>
-            <th style={{ padding: '5px 10px', textAlign: 'left', color: '#166534' }}>Color</th>
-          </tr>
-        </thead>
-        <tbody>
-          {informe.map((l, i) => (
-            <tr key={i} style={{ borderTop: '1px solid #bbf7d0', background: l.encontrado ? (i % 2 ? '#f7fef9' : '#fff') : '#fee2e2' }}>
-              <td style={{ padding: '5px 10px', fontWeight: 700 }}>{l.codigo_pieza ?? '—'}</td>
-              <td style={{ padding: '5px 10px' }}>{l.referencia}</td>
-              <td style={{ padding: '5px 10px', textAlign: 'right', fontWeight: 600 }}>{l.medida_necesaria}</td>
-              <td style={{ padding: '5px 10px' }}>{l.estante_nombre ?? '—'}</td>
-              <td style={{ padding: '5px 10px' }}>
-                {l.encontrado ? (l.color_nombre ?? '—') : <strong style={{ color: '#b91c1c' }}>SIN STOCK — pedir material</strong>}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+
+      {plan.avisos.length > 0 && (
+        <div style={{ background: '#fef3c7', borderBottom: '1px solid #fde68a', padding: '8px 14px', fontSize: 12, color: '#92400e' }}>
+          <strong>Revisa la configuración (estos cortes no se han podido calcular):</strong>
+          <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+            {plan.avisos.map((a, i) => <li key={i}>{a}</li>)}
+          </ul>
+        </div>
+      )}
+
+      {r.total_cortes === 0 ? (
+        <p style={{ margin: 0, padding: 14, fontSize: 13, color: '#6b7280' }}>
+          Esta orden no tiene perfiles con código de catálogo que calcular (revisa la tipología y las medidas de las líneas).
+        </p>
+      ) : (
+        <>
+          <div style={{ display: 'flex', gap: 22, flexWrap: 'wrap', padding: '10px 14px', fontSize: 13, borderBottom: `1px solid ${colorBorde}` }}>
+            <span><strong style={{ fontSize: 16, color: '#166534' }}>{r.aprovechamiento_pct.toLocaleString('es-ES')} %</strong> aprovechamiento</span>
+            <span><strong>{r.barras_usadas}</strong> {r.barras_usadas === 1 ? 'pieza' : 'piezas'} a sacar</span>
+            <span><strong>{r.barras_enteras_abiertas}</strong> {r.barras_enteras_abiertas === 1 ? 'barra entera' : 'barras enteras'} a abrir</span>
+            <span title="Despunte de barras enteras + restos menores de 350 mm que se descartan (la sierra no se cuenta)">
+              <strong>{num(r.perdida_mm)} mm</strong> de material perdido
+              {r.perdida_mm > 0 && <span style={{ color: '#6b7280' }}> ({num(r.perdida_despunte_mm)} despunte + {num(r.perdida_descartes_mm)} descartes)</span>}
+            </span>
+          </div>
+
+          {plan.barras.length > 0 && (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: previa ? '#fef3c7' : '#dcfce7' }}>
+                    <th style={{ ...th, width: '1%', whiteSpace: 'nowrap' }}>Estantería</th>
+                    <th style={{ ...th, width: '1%', whiteSpace: 'nowrap' }}>Código</th>
+                    <th style={th}>Perfil</th>
+                    <th style={th}>Color</th>
+                    <th style={{ ...th, textAlign: 'right' }}>Medida</th>
+                    <th style={th}>Cortes a sacar</th>
+                    <th style={th}>Queda</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {plan.barras.map((b, i) => (
+                    <tr key={`${b.codigo}-${i}`} style={{ borderTop: `1px solid ${colorBorde}`, background: i % 2 ? colorFondo : '#fff' }}>
+                      <td style={{ padding: '5px 8px', fontWeight: 600, whiteSpace: 'nowrap' }}>{b.estante_nombre ?? '—'}</td>
+                      <td style={{ padding: '5px 8px', fontWeight: 700, whiteSpace: 'nowrap' }}>{b.codigo}</td>
+                      <td style={{ padding: '5px 10px', minWidth: 200 }}>
+                        <span style={{ fontWeight: 600 }}>{b.descripcion && b.descripcion !== '—' ? b.descripcion : b.referencia}</span>
+                        {b.descripcion && b.descripcion !== '—' && <span style={{ marginLeft: 6, fontSize: 11, color: '#9ca3af' }}>{b.referencia}</span>}
+                      </td>
+                      <td style={{ padding: '5px 10px' }}>{b.color_nombre ?? '—'}</td>
+                      <td style={{ padding: '5px 10px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        {num(b.medida_inicial)}
+                        {b.barra_entera && <span style={{ marginLeft: 6, fontSize: 10, background: '#e0e7ff', color: '#3730a3', padding: '1px 6px', borderRadius: 5, fontWeight: 600 }}>ENTERA</span>}
+                      </td>
+                      <td style={{ padding: '5px 10px', fontWeight: 600 }}>{b.cortes.join(' + ')}</td>
+                      <td style={{ padding: '5px 10px', whiteSpace: 'nowrap' }}>
+                        {b.medida_final !== null
+                          ? `${num(b.medida_final)} mm`
+                          : <span style={{ color: '#6b7280' }}>Se agota{b.resto_descartado > 0 ? ` (se descartan ${num(b.resto_descartado)} mm)` : ''}</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
+      {(['perfil', 'tubo'] as const).map(tipo => {
+        const lista = plan.faltantes.filter(f => f.es_tubo === (tipo === 'tubo'))
+        if (lista.length === 0) return null
+        const cuantos = lista.reduce((n, f) => n + f.cortes.length, 0)
+        const esTubo = tipo === 'tubo'
+        return (
+          <div key={tipo} style={{ borderTop: `1px solid ${colorBorde}`, background: esTubo ? '#fff7ed' : '#fee2e2', padding: '10px 14px', fontSize: 13, color: esTubo ? '#9a3412' : '#991b1b' }}>
+            <strong>{esTubo ? `Tubo sin stock aquí (${cuantos} ${cuantos === 1 ? 'corte' : 'cortes'})` : `Sin material para ${cuantos} ${cuantos === 1 ? 'corte' : 'cortes'}`}</strong>
+            {' '}— {esTubo
+              ? 'la orden sigue adelante: hay que mirarlo en otro almacén:'
+              : 'la orden sigue adelante marcada sin material; hay que pedirlo:'}
+            <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+              {lista.map((f, i) => (
+                <li key={i}>
+                  <strong>{f.descripcion !== '—' ? f.descripcion : f.referencia}</strong> {f.descripcion !== '—' ? `(${f.referencia})` : ''}{f.color_nombre ? ` · ${f.color_nombre}` : ''}:
+                  {' '}{f.cortes.join(', ')} mm {!esTubo && <span style={{ opacity: 0.8 }}>(≈ {num(f.total_mm)} mm de perfil contando la sierra)</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      })}
     </div>
   )
 }
 
-function VistaOrden({ orden, informe }: { orden: OrdenTrabajo; informe?: LineaInformeMaterial[] }) {
+function VistaOrden({ orden, plan, previa, confirmando, onConfirmar, onCancelar }: {
+  orden: OrdenTrabajo
+  plan?: PlanMaterial
+  previa?: boolean
+  confirmando?: boolean
+  onConfirmar?: () => void
+  onCancelar?: () => void
+}) {
   return (
     <div>
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 14, fontSize: 13 }}>
@@ -508,7 +605,7 @@ function VistaOrden({ orden, informe }: { orden: OrdenTrabajo; informe?: LineaIn
         {orden.nota_id && <span><strong>Nota:</strong> #{orden.numero_nota_rel ?? orden.nota_id}</span>}
         {orden.observaciones && <span style={{ color: '#6b7280', fontStyle: 'italic' }}>{orden.observaciones}</span>}
       </div>
-      {informe && informe.length > 0 && <InformeMaterial informe={informe} />}
+      {plan && <PanelMaterial plan={plan} previa={!!previa} confirmando={confirmando} onConfirmar={onConfirmar} onCancelar={onCancelar} />}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {orden.orden_lineas.map((linea, i) => {
           const tip = linea.tipologia
@@ -587,8 +684,10 @@ export default function OrdenesExplorer({ ordenesIniciales, tipologias, colores,
   const [editando,   setEditando]   = useState<OrdenTrabajo | null>(null)
   const [expandida,  setExpandida]  = useState<number | null>(null)
   const [eliminando, setEliminando] = useState<number | null>(null)
-  const [informes, setInformes]     = useState<Record<number, LineaInformeMaterial[]>>({})
-  const [generando, setGenerando]   = useState<number | null>(null)
+  const [informes, setInformes]     = useState<Record<number, PlanMaterial>>({})
+  const [previas, setPrevias]       = useState<Record<number, PlanMaterial>>({})
+  const [calculando, setCalculando] = useState<number | null>(null)
+  const [confirmando, setConfirmando] = useState<number | null>(null)
   const [deshaciendo, setDeshaciendo] = useState<number | null>(null)
   const [errorMaterial, setErrorMaterial] = useState<Record<number, string>>({})
 
@@ -599,8 +698,15 @@ export default function OrdenesExplorer({ ordenesIniciales, tipologias, colores,
 
   async function onEliminar(id: number) {
     if (!confirm('¿Eliminar esta orden?')) return
-    setEliminando(id); await eliminarOrden(id)
-    setOrdenes(prev => prev.filter(o => o.id !== id)); setEliminando(null)
+    setEliminando(id); setErrorMaterial(prev => ({ ...prev, [id]: '' }))
+    try {
+      await eliminarOrden(id)
+      setOrdenes(prev => prev.filter(o => o.id !== id))
+    } catch (e: any) {
+      setErrorMaterial(prev => ({ ...prev, [id]: e.message ?? 'No se pudo eliminar.' }))
+    } finally {
+      setEliminando(null)
+    }
   }
 
   async function expandir(o: OrdenTrabajo) {
@@ -608,21 +714,41 @@ export default function OrdenesExplorer({ ordenesIniciales, tipologias, colores,
     setExpandida(abrir ? o.id : null)
     if (abrir && o.material_generado && !informes[o.id]) {
       const informe = await cargarInformeMaterial(o.id)
-      setInformes(prev => ({ ...prev, [o.id]: informe }))
+      if (informe) setInformes(prev => ({ ...prev, [o.id]: informe }))
     }
   }
 
-  async function onGenerarMaterial(o: OrdenTrabajo) {
-    setGenerando(o.id); setErrorMaterial(prev => ({ ...prev, [o.id]: '' }))
+  // Paso 1: calcular qué piezas usar SIN descontar nada.
+  async function onCalcularMaterial(o: OrdenTrabajo) {
+    setCalculando(o.id); setErrorMaterial(prev => ({ ...prev, [o.id]: '' }))
     try {
-      const informe = await generarInformeMaterial(o.id)
-      setInformes(prev => ({ ...prev, [o.id]: informe }))
+      const plan = await previsualizarMaterial(o.id)
+      setPrevias(prev => ({ ...prev, [o.id]: plan }))
+      setExpandida(o.id)
+    } catch (e: any) {
+      setErrorMaterial(prev => ({ ...prev, [o.id]: e.message ?? 'No se pudo calcular el material.' }))
+    } finally {
+      setCalculando(null)
+    }
+  }
+
+  function onCancelarPrevia(id: number) {
+    setPrevias(prev => { const c = { ...prev }; delete c[id]; return c })
+  }
+
+  // Paso 2: confirmar. El servidor recalcula con el stock de ese momento y descuenta.
+  async function onConfirmarMaterial(o: OrdenTrabajo) {
+    setConfirmando(o.id); setErrorMaterial(prev => ({ ...prev, [o.id]: '' }))
+    try {
+      const plan = await generarInformeMaterial(o.id)
+      setInformes(prev => ({ ...prev, [o.id]: plan }))
+      onCancelarPrevia(o.id)
       setOrdenes(prev => prev.map(x => x.id === o.id ? { ...x, material_generado: true } : x))
       setExpandida(o.id)
     } catch (e: any) {
       setErrorMaterial(prev => ({ ...prev, [o.id]: e.message ?? 'No se pudo generar el material.' }))
     } finally {
-      setGenerando(null)
+      setConfirmando(null)
     }
   }
 
@@ -689,8 +815,8 @@ export default function OrdenesExplorer({ ordenesIniciales, tipologias, colores,
                 {deshaciendo === o.id ? '…' : '↩ Deshacer material'}
               </button>
             ) : (
-              <button onClick={e => { e.stopPropagation(); onGenerarMaterial(o) }} disabled={generando === o.id} style={btn('#dcfce7', '#166534')}>
-                {generando === o.id ? 'Calculando…' : '📦 Generar material'}
+              <button onClick={e => { e.stopPropagation(); onCalcularMaterial(o) }} disabled={calculando === o.id} style={btn('#dcfce7', '#166534')}>
+                {calculando === o.id ? 'Calculando…' : '📦 Calcular material'}
               </button>
             )}
             <a href={`/ordenes-imprimir/${o.id}`} target="_blank" rel="noopener noreferrer"
@@ -698,8 +824,12 @@ export default function OrdenesExplorer({ ordenesIniciales, tipologias, colores,
               style={{ ...btn('#f0fdf4', '#16a34a'), display: 'inline-flex', alignItems: 'center', textDecoration: 'none' }}>
               🖨 Imprimir
             </a>
-            <button onClick={e => { e.stopPropagation(); setEditando(o); setModo('editar') }} style={btn('#f3f4f6', '#374151')}>Editar</button>
-            <button onClick={e => { e.stopPropagation(); onEliminar(o.id) }} disabled={eliminando === o.id} style={btn('#fee2e2', '#dc2626')}>
+            <button onClick={e => { e.stopPropagation(); setEditando(o); setModo('editar') }} disabled={o.material_generado}
+              title={o.material_generado ? 'Pulsa «Deshacer material» antes de editar' : undefined}
+              style={{ ...btn('#f3f4f6', '#374151'), opacity: o.material_generado ? 0.45 : 1, cursor: o.material_generado ? 'not-allowed' : 'pointer' }}>Editar</button>
+            <button onClick={e => { e.stopPropagation(); onEliminar(o.id) }} disabled={eliminando === o.id || o.material_generado}
+              title={o.material_generado ? 'Pulsa «Deshacer material» antes de eliminar' : undefined}
+              style={{ ...btn('#fee2e2', '#dc2626'), opacity: o.material_generado ? 0.45 : 1, cursor: o.material_generado ? 'not-allowed' : 'pointer' }}>
               {eliminando === o.id ? '…' : 'Eliminar'}
             </button>
           </div>
@@ -708,7 +838,14 @@ export default function OrdenesExplorer({ ordenesIniciales, tipologias, colores,
           )}
           {expandida === o.id && (
             <div style={{ borderTop: '1px solid #f3f4f6', padding: '12px 16px' }}>
-              <VistaOrden orden={o} informe={informes[o.id]} />
+              <VistaOrden
+                orden={o}
+                plan={previas[o.id] ?? informes[o.id]}
+                previa={!!previas[o.id]}
+                confirmando={confirmando === o.id}
+                onConfirmar={() => onConfirmarMaterial(o)}
+                onCancelar={() => onCancelarPrevia(o.id)}
+              />
             </div>
           )}
         </div>
