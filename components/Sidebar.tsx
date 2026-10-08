@@ -14,7 +14,8 @@ export default function Sidebar({ nombreEmpleado }: { nombreEmpleado: string }) 
   const supabase = createClient()
 
   const enOrdenes = pathname.startsWith('/ordenes') || pathname.startsWith('/tipologias') ||
-    pathname.startsWith('/catalogo-perfiles') || pathname.startsWith('/inventario-mosquiteros')
+    pathname.startsWith('/catalogo-perfiles') || pathname.startsWith('/inventario-mosquiteros') ||
+    pathname.startsWith('/stock-minimo')
   const enAjustesOrdenes = pathname === '/ordenes/ajustes'
   const [submenuAbierto, setSubmenuAbierto] = useState(enOrdenes)
 
@@ -115,6 +116,10 @@ export default function Sidebar({ nombreEmpleado }: { nombreEmpleado: string }) 
               <Link href="/inventario-mosquiteros" style={subEnlaceStyle(pathname === '/inventario-mosquiteros')}>
                 <span style={{ width: 5, height: 5, borderRadius: '50%', flexShrink: 0, background: COLOR_ORDENES, opacity: 0.7 }} />
                 Inventario Mosquiteros
+              </Link>
+              <Link href="/stock-minimo" style={subEnlaceStyle(pathname === '/stock-minimo')}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', flexShrink: 0, background: COLOR_ORDENES, opacity: 0.7 }} />
+                Stock mínimo
               </Link>
               <Link href="/ordenes/ajustes" style={subEnlaceStyle(enAjustesOrdenes)}>
                 <span style={{ width: 5, height: 5, borderRadius: '50%', flexShrink: 0, background: COLOR_ORDENES, opacity: 0.7 }} />
