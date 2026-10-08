@@ -2,11 +2,13 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import CabeceraSeccion, { coloresSeccion, type ColorSeccion } from '@/components/CabeceraSeccion'
 import TarjetaCitasDia from './TarjetaCitasDia'
+import { cargarAvisosStockMinimo } from './stock-minimo/actions'
 
 export default async function InicioPage() {
   const supabase = await createClient()
 
-  const [{ count: totalClientes }, { count: totalNotasHoy }] = await Promise.all([
+  const [avisosStock, { count: totalClientes }, { count: totalNotasHoy }] = await Promise.all([
+    cargarAvisosStockMinimo().catch(() => []),
     supabase.from('clientes').select('*', { count: 'exact', head: true }),
     supabase
       .from('notas')
@@ -17,6 +19,23 @@ export default async function InicioPage() {
   return (
     <div>
       <CabeceraSeccion color="gris" titulo="Menú" subtitulo="Resumen rápido y accesos directos" />
+
+      {avisosStock.length > 0 && (
+        <Link href="/stock-minimo" style={{
+          display: 'block', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 12,
+          padding: '12px 16px', marginBottom: 20, textDecoration: 'none', color: '#991b1b', fontSize: 14,
+        }}>
+          <strong>⚠ Stock por debajo del mínimo</strong>
+          <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+            {avisosStock.map(a => (
+              <li key={a.id}>
+                La cantidad de <strong>{a.descripcion || a.referencia}</strong> ({a.referencia}) en color <strong>{a.color_nombre}</strong> está
+                por debajo del stock mínimo: {a.barras_actuales} {a.barras_actuales === 1 ? 'barra' : 'barras'} (mínimo {a.unidades_minimas}).
+              </li>
+            ))}
+          </ul>
+        </Link>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 32 }}>
         <Metrica etiqueta="Clientes registrados" valor={totalClientes ?? 0} />
