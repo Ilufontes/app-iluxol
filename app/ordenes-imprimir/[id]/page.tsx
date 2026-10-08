@@ -228,16 +228,19 @@ export default async function OrdenesImprimirPage({ params }: { params: Promise<
               <table className="cortes">
                 <thead>
                   <tr>
-                    <th>Estantería</th><th>Código</th><th>Ref.</th><th>Color</th>
+                    <th style={{ width: '1%', whiteSpace: 'nowrap' }}>Estantería</th><th style={{ width: '1%', whiteSpace: 'nowrap' }}>Código</th><th>Perfil</th><th>Color</th>
                     <th style={{ textAlign: 'right' }}>Medida</th><th>Cortes a sacar</th><th>Queda</th>
                   </tr>
                 </thead>
                 <tbody>
                   {orden.material.barras.map((b, i) => (
                     <tr key={`${b.codigo}-${i}`}>
-                      <td className="mat-b">{b.estante_nombre ?? '—'}</td>
-                      <td className="mat-b">{b.codigo}</td>
-                      <td>{b.referencia}</td>
+                      <td className="mat-b" style={{ whiteSpace: 'nowrap' }}>{b.estante_nombre ?? '—'}</td>
+                      <td className="mat-b" style={{ whiteSpace: 'nowrap' }}>{b.codigo}</td>
+                      <td className="mat-b" style={{ minWidth: 200 }}>
+                        {b.descripcion && b.descripcion !== '—' ? b.descripcion : b.referencia}
+                        {b.descripcion && b.descripcion !== '—' && <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: 10.5, marginLeft: 6 }}>{b.referencia}</span>}
+                      </td>
                       <td>{b.color_nombre ?? '—'}</td>
                       <td style={{ textAlign: 'right' }}>{b.medida_inicial.toLocaleString('es-ES')}{b.barra_entera ? ' (entera)' : ''}</td>
                       <td className="mat-b">{b.cortes.join(' + ')}</td>
@@ -250,13 +253,13 @@ export default async function OrdenesImprimirPage({ params }: { params: Promise<
             {orden.material.faltantes.filter(f => !f.es_tubo).length > 0 && (
               <div className="mat-falta">
                 <strong>SIN MATERIAL (pedir):</strong>{' '}
-                {orden.material.faltantes.filter(f => !f.es_tubo).map(f => `${f.referencia}${f.color_nombre ? ' ' + f.color_nombre : ''}: ${f.cortes.join(', ')} mm`).join(' · ')}
+                {orden.material.faltantes.filter(f => !f.es_tubo).map(f => `${f.descripcion && f.descripcion !== '—' ? f.descripcion : f.referencia}${f.color_nombre ? ' ' + f.color_nombre : ''}: ${f.cortes.join(', ')} mm`).join(' · ')}
               </div>
             )}
             {orden.material.faltantes.filter(f => f.es_tubo).length > 0 && (
               <div className="mat-falta" style={{ background: '#fff7ed', color: '#9a3412', borderTopColor: '#fed7aa' }}>
                 <strong>TUBO SIN STOCK (mirar en otro almacén):</strong>{' '}
-                {orden.material.faltantes.filter(f => f.es_tubo).map(f => `${f.referencia}${f.color_nombre ? ' ' + f.color_nombre : ''}: ${f.cortes.join(', ')} mm`).join(' · ')}
+                {orden.material.faltantes.filter(f => f.es_tubo).map(f => `${f.descripcion && f.descripcion !== '—' ? f.descripcion : f.referencia}${f.color_nombre ? ' ' + f.color_nombre : ''}: ${f.cortes.join(', ')} mm`).join(' · ')}
               </div>
             )}
           </div>

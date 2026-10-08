@@ -526,9 +526,9 @@ function PanelMaterial({ plan, previa, confirmando, onConfirmar, onCancelar }: {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: previa ? '#fef3c7' : '#dcfce7' }}>
-                    <th style={th}>Estantería</th>
-                    <th style={th}>Código</th>
-                    <th style={th}>Ref.</th>
+                    <th style={{ ...th, width: '1%', whiteSpace: 'nowrap' }}>Estantería</th>
+                    <th style={{ ...th, width: '1%', whiteSpace: 'nowrap' }}>Código</th>
+                    <th style={th}>Perfil</th>
                     <th style={th}>Color</th>
                     <th style={{ ...th, textAlign: 'right' }}>Medida</th>
                     <th style={th}>Cortes a sacar</th>
@@ -538,9 +538,12 @@ function PanelMaterial({ plan, previa, confirmando, onConfirmar, onCancelar }: {
                 <tbody>
                   {plan.barras.map((b, i) => (
                     <tr key={`${b.codigo}-${i}`} style={{ borderTop: `1px solid ${colorBorde}`, background: i % 2 ? colorFondo : '#fff' }}>
-                      <td style={{ padding: '5px 10px', fontWeight: 600 }}>{b.estante_nombre ?? '—'}</td>
-                      <td style={{ padding: '5px 10px', fontWeight: 700 }}>{b.codigo}</td>
-                      <td style={{ padding: '5px 10px' }} title={b.descripcion}>{b.referencia}</td>
+                      <td style={{ padding: '5px 8px', fontWeight: 600, whiteSpace: 'nowrap' }}>{b.estante_nombre ?? '—'}</td>
+                      <td style={{ padding: '5px 8px', fontWeight: 700, whiteSpace: 'nowrap' }}>{b.codigo}</td>
+                      <td style={{ padding: '5px 10px', minWidth: 200 }}>
+                        <span style={{ fontWeight: 600 }}>{b.descripcion && b.descripcion !== '—' ? b.descripcion : b.referencia}</span>
+                        {b.descripcion && b.descripcion !== '—' && <span style={{ marginLeft: 6, fontSize: 11, color: '#9ca3af' }}>{b.referencia}</span>}
+                      </td>
                       <td style={{ padding: '5px 10px' }}>{b.color_nombre ?? '—'}</td>
                       <td style={{ padding: '5px 10px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                         {num(b.medida_inicial)}
@@ -575,7 +578,7 @@ function PanelMaterial({ plan, previa, confirmando, onConfirmar, onCancelar }: {
             <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
               {lista.map((f, i) => (
                 <li key={i}>
-                  <strong>{f.referencia}</strong> {f.descripcion !== '—' ? `(${f.descripcion})` : ''}{f.color_nombre ? ` · ${f.color_nombre}` : ''}:
+                  <strong>{f.descripcion !== '—' ? f.descripcion : f.referencia}</strong> {f.descripcion !== '—' ? `(${f.referencia})` : ''}{f.color_nombre ? ` · ${f.color_nombre}` : ''}:
                   {' '}{f.cortes.join(', ')} mm {!esTubo && <span style={{ opacity: 0.8 }}>(≈ {num(f.total_mm)} mm de perfil contando la sierra)</span>}
                 </li>
               ))}
