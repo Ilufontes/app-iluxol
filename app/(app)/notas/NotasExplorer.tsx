@@ -643,7 +643,7 @@ function ModalNota({
           <div style={{ position: 'absolute', top: 12, right: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
             {esEdicion && notaEditando?.clientes?.nombre && (
               <a
-                href={`/clientes?buscar=${encodeURIComponent(notaEditando.clientes.nombre)}${notaEditando.numero_nota ? `&nota=${notaEditando.numero_nota}` : ''}`}
+                href={`/clientes?buscar=${encodeURIComponent(notaEditando.clientes.nombre)}${notaEditando.numero_nota ? `&nota=${notaEditando.numero_nota}` : ''}${(notaEditando.cliente_id ?? notaEditando.clientes.id) ? `&abrir=${notaEditando.cliente_id ?? notaEditando.clientes.id}` : ''}${notaEditando.domicilio_id ? `&domicilio=${notaEditando.domicilio_id}` : ''}`}
                 style={{
                   height: 26, padding: '0 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.4)',
                   background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 12,
@@ -966,7 +966,7 @@ function PanelDetalleNota({
           <div style={{ position: 'absolute', top: 12, right: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
             {nota.clientes?.nombre && (
               <a
-                href={`/clientes?buscar=${encodeURIComponent(nota.clientes.nombre)}${nota.numero_nota ? `&nota=${nota.numero_nota}` : ''}`}
+                href={`/clientes?buscar=${encodeURIComponent(nota.clientes.nombre)}${nota.numero_nota ? `&nota=${nota.numero_nota}` : ''}${(nota.cliente_id ?? nota.clientes.id) ? `&abrir=${nota.cliente_id ?? nota.clientes.id}` : ''}${nota.domicilio_id ? `&domicilio=${nota.domicilio_id}` : ''}`}
                 style={{
                   height: 26, padding: '0 10px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.4)',
                   background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 12,

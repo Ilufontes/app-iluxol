@@ -15,6 +15,9 @@ import {
   subirDocumentoCliente,
   borrarDocumentoCliente,
   comprobarDuplicados,
+  obtenerClientePorId,
+  listarNotasDomicilio,
+  type NotaDeDomicilio,
 } from './actions'
 import CabeceraSeccion from '@/components/CabeceraSeccion'
 import Paginacion from '@/components/Paginacion'
@@ -87,6 +90,26 @@ export default function ClientesExplorer({
   const [modalAbierto, setModalAbierto] = useState(false)
   const [clienteEditando, setClienteEditando] = useState<Cliente | null>(null)
   const notaOrigen = searchParams.get('nota')
+  const [domicilioInicialId, setDomicilioInicialId] = useState<number | null>(null)
+
+  // Si se llega con ?abrir=ID_CLIENTE (desde "Ver cliente" en una nota) se abre
+  // directamente su ficha, y con &domicilio=ID se deja seleccionado ese domicilio.
+  useEffect(() => {
+    const id = Number(searchParams.get('abrir'))
+    if (!Number.isInteger(id) || id <= 0) return
+    const dom = Number(searchParams.get('domicilio'))
+    obtenerClientePorId(id).then((c: any) => {
+      if (!c) return
+      const normalizado: Cliente = {
+        ...c,
+        domicilios: (c.domicilios ?? []).map((d: any) => ({ ...d, municipios: unoOnulo(d.municipios) })),
+      }
+      setClienteEditando(normalizado)
+      setDomicilioInicialId(Number.isInteger(dom) && dom > 0 ? dom : null)
+      setModalAbierto(true)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const t = busqueda.trim()
@@ -252,6 +275,7 @@ export default function ClientesExplorer({
         <ModalCliente
           cliente={clienteEditando}
           municipios={municipios}
+          domicilioInicialId={domicilioInicialId}
           onCerrar={() => setModalAbierto(false)}
           onGuardado={alGuardarCliente}
           onDomicilioCambiado={alCambiarDomicilioDeCliente}
@@ -337,12 +361,14 @@ function TarjetaCliente({ cliente, onAbrir }: { cliente: Cliente; onAbrir: () =>
 function ModalCliente({
   cliente,
   municipios,
+  domicilioInicialId,
   onCerrar,
   onGuardado,
   onDomicilioCambiado,
 }: {
   cliente: Cliente | null
   municipios: Municipio[]
+  domicilioInicialId?: number | null
   onCerrar: () => void
   onGuardado: (cliente: Cliente, esNuevo: boolean) => void
   onDomicilioCambiado: (clienteId: number, domicilio: Domicilio, esNuevo: boolean) => void
@@ -356,7 +382,9 @@ function ModalCliente({
   const [lpd, setLpd] = useState(cliente?.lpd_firmado ?? false)
   const [domicilios, setDomicilios] = useState<Domicilio[]>(cliente?.domicilios ?? [])
   const [domicilioSeleccionadoId, setDomicilioSeleccionadoId] = useState<number | null>(
-    cliente?.domicilios.length === 1 ? cliente.domicilios[0].id : null
+    cliente?.domicilios.some((d) => d.id === domicilioInicialId)
+      ? domicilioInicialId!
+      : cliente?.domicilios.length === 1 ? cliente.domicilios[0].id : null
   )
   const [creandoDomicilioNuevo, setCreandoDomicilioNuevo] = useState(false)
   const [guardando, setGuardando] = useState(false)
@@ -784,8 +812,54 @@ function PanelDomicilioEdicion({
         </button>
       </div>
 
+      <SeccionNotasDomicilio domicilioId={domicilio.id} />
+
       <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 16 }}>
         <SeccionFotos domicilioId={domicilio.id} />
+      </div>
+    </div>
+  )
+}
+
+function SeccionNotasDomicilio({ domicilioId }: { domicilioId: number }) {
+  const [notas, setNotas] = useState<NotaDeDomicilio[] | null>(null)
+
+  useEffect(() => {
+    let activo = true
+    setNotas(null)
+    listarNotasDomicilio(domicilioId).then((r) => { if (activo) setNotas(r) })
+    return () => { activo = false }
+  }, [domicilioId])
+
+  const fecha = (iso: string | null) => (iso ? iso.split('-').reverse().join('/') : null)
+
+  return (
+    <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 16, marginBottom: 20 }}>
+      <div style={{ fontSize: 13, color: '#374151', marginBottom: 8 }}>
+        Notas de este domicilio{notas ? ` (${notas.length})` : ''}
+      </div>
+      {notas === null && <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>Cargando...</p>}
+      {notas !== null && notas.length === 0 && (
+        <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>Este domicilio no tiene notas.</p>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {(notas ?? []).map((n) => (
+          <a
+            key={n.id}
+            href={`/notas?nota=${n.numero_nota ?? ''}`}
+            style={{
+              display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center',
+              padding: '7px 10px', borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff',
+              textDecoration: 'none', color: '#1c2230', fontSize: 13,
+            }}
+          >
+            <span><strong>Nota {n.numero_nota ?? n.id}</strong>{n.tipo ? ` · ${n.tipo}` : ''}</span>
+            <span style={{ fontSize: 12, color: '#6b7280', whiteSpace: 'nowrap' }}>
+              {n.dia_cita ? `${fecha(n.dia_cita)}${n.hora_cita ? ' ' + n.hora_cita.slice(0, 5) : ''}` : 'Sin cita'}
+              {n.asignado ? ` · ${n.asignado}` : ''} →
+            </span>
+          </a>
+        ))}
       </div>
     </div>
   )
