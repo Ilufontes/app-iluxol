@@ -288,3 +288,29 @@ export async function borrarDocumentoCliente(documentoId: number, rutaStorage: s
 
   revalidatePath('/clientes')
 }
+
+export type NotaDeDomicilio = {
+  id: number
+  numero_nota: number | null
+  dia_cita: string | null
+  hora_cita: string | null
+  tipo: string | null
+  asignado: string | null
+}
+
+/** Notas asignadas a un domicilio (más recientes primero), para saltar a ellas desde la ficha. */
+export async function listarNotasDomicilio(domicilioId: number): Promise<NotaDeDomicilio[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('notas')
+    .select('id, numero_nota, dia_cita, hora_cita, tipo_notas ( nombre ), asignados ( nombre )')
+    .eq('domicilio_id', domicilioId)
+    .order('numero_nota', { ascending: false })
+    .limit(50)
+  if (error) return []
+  const uno = (v: any) => (Array.isArray(v) ? (v[0] ?? null) : v)
+  return (data ?? []).map((n: any) => ({
+    id: n.id, numero_nota: n.numero_nota, dia_cita: n.dia_cita, hora_cita: n.hora_cita,
+    tipo: uno(n.tipo_notas)?.nombre ?? null, asignado: uno(n.asignados)?.nombre ?? null,
+  }))
+}
